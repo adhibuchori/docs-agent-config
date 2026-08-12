@@ -23,6 +23,7 @@ Not advice about writing rules. The rules themselves, in the form that executes.
 - [Repository structure](#repository-structure)
 - [Quick start](#quick-start)
 - [What is deliberately excluded](#what-is-deliberately-excluded)
+- [GitHub repository configuration](#github-repository-configuration)
 - [Requirements](#requirements)
 - [Adapting it to your stack](#adapting-it-to-your-stack)
 - [The failure mode unique to docs sites](#the-failure-mode-unique-to-docs-sites)
@@ -103,8 +104,8 @@ written for an application codebase would be dead text.
 
 | Agent | Scope |
 | :-- | :-- |
-| `sc-security-guard` | Content-Security-Policy integrity, secret hygiene, XSS prevention |
-| `sc-seo-validator` | Metadata completeness, structured data, Open Graph |
+| `agents-security-guard` | Content-Security-Policy integrity, secret hygiene, XSS prevention |
+| `agents-seo-validator` | Metadata completeness, structured data, Open Graph |
 
 Both matter more here than in an application, because a docs site is public by definition and is
 usually the most-indexed thing a team publishes. The reviewer and translation-parity agents are
@@ -164,7 +165,7 @@ docs-agent-config/
 │   ├── rules/
 │   │   ├── common/              8 files
 │   │   └── web/                 5 files
-│   ├── agents/                  sc-security-guard · sc-seo-validator + INDEX.md
+│   ├── agents/                  agents-security-guard · agents-seo-validator + INDEX.md
 │   ├── anti-patterns/           3 documented failures + INDEX.md
 │   ├── hooks/                   5 scripts + lib.sh
 │   ├── commands/                12 slash commands (generated)
@@ -230,6 +231,179 @@ they should take and the two escaping traps waiting in them, but the implementat
 
 ---
 
+## GitHub repository configuration
+
+Everything the workflows need, in the order you should set it up. **Nothing here is required to
+clone and read the layer** — this is for when you wire the gate into a real repository.
+
+A docs site has one wrinkle the other two do not: **it talks to a second repository.** The changelog
+pipeline reads the application repo's commits, which means a cross-repository token, and that token
+is the one worth being careful with. Skip to [the checklist](#checklist) if you just want the list.
+
+### Step 0 — Create the branches (this is what turns the workflows on)
+
+```bash
+git checkout -b dev  && git push -u origin dev
+git checkout -b prod && git push -u origin prod
+```
+
+Until these exist, **no workflow can trigger** — every one of them is scoped to `dev` or `prod`.
+That is why cloning this repo costs zero Actions minutes.
+
+Then set `dev` as the default branch: **Settings → General → Default branch**.
+
+### Step 1 — Repository secrets
+
+**Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | Required for | How to get it |
+| :-- | :-- | :-- |
+| `GITHUB_TOKEN` | everything | **Do not create this.** GitHub injects it automatically per run. It appears in the workflows but never in your settings |
+| `CLOUDFLARE_API_TOKEN` | `ci-cd.yaml` deploy | See [Step 3](#step-3--cloudflare-deploy) |
+| `CLOUDFLARE_ACCOUNT_ID` | `ci-cd.yaml` deploy | Cloudflare dashboard → **Workers & Pages** → right sidebar. Not secret, but the action expects it here |
+| `APP_REPO_TOKEN` | `changelog.yaml` | See [Step 4](#step-4--cross-repository-token) |
+| `DEEPSEEK_CODE_REVIEW_TOKEN` | `deepseek-review.yml` | See [Step 5](#step-5--ai-review-token-optional) |
+
+Delete the workflow rather than inventing a value for a secret you do not need. A workflow failing
+on a missing secret every single run trains people to ignore red marks.
+
+### Step 2 — Repository variables (not secrets)
+
+**Settings → Secrets and variables → Actions → Variables tab**
+
+| Variable | Purpose |
+| :-- | :-- |
+| `CI_RUNNER` | Runner label. Every job reads `${{ vars.CI_RUNNER \|\| 'ubuntu-latest' }}`, so **leaving it unset is valid** and gives you GitHub's hosted runners. Set it only to point at a self-hosted or third-party runner |
+
+Variables are visible in logs; secrets are masked. A runner label is not sensitive, which is why it
+is a variable.
+
+### Step 3 — Cloudflare deploy
+
+`ci-cd.yaml` deploys the built static site to a Cloudflare Worker via
+[`cloudflare/wrangler-action`](https://github.com/cloudflare/wrangler-action).
+
+1. Cloudflare dashboard → **My Profile → API Tokens → Create Token**.
+2. Use the **Edit Cloudflare Workers** template, or build a custom token with:
+   - `Account · Workers Scripts · Edit`
+   - `Account · Account Settings · Read`
+3. Scope it to the **one account** that hosts this site, not "All accounts".
+4. Add it as `CLOUDFLARE_API_TOKEN`, and the account ID as `CLOUDFLARE_ACCOUNT_ID`.
+
+You also need a `wrangler.jsonc` in the repository root — it is not shipped here, since it names
+your Worker and its routes.
+
+> The shipped workflow pins `wranglerVersion: '3'` deliberately. Wrangler 4 requires Node 22+ and
+> the runner ships Node 20; pinning was preferred over adding a `setup-node` step for a single CLI
+> invocation. If you bump it, add the Node step in the same change.
+
+**Deploying elsewhere?** Replace `ci-cd.yaml` outright rather than editing around it, and skip both
+Cloudflare secrets. Nothing else in the layer depends on the deploy target.
+
+### Step 4 — Cross-repository token
+
+This is the one to get right. `changelog.yaml` reads the **application repository's** commits and
+tags to build the changelog, and resolves its production SHA through the REST API.
+
+1. Create a **fine-grained personal access token**: your avatar → **Settings → Developer settings →
+   Personal access tokens → Fine-grained tokens**.
+2. **Resource owner:** the org or account owning the application repo. **Repository access:** only
+   that repo — not "All repositories".
+3. **Permissions:** `Contents: Read-only`. Reading commits and tags needs nothing more.
+4. Set an expiry you will actually notice. When it lapses, the changelog job fails with an
+   authentication error rather than silently producing an empty changelog.
+5. Add it as `APP_REPO_TOKEN`, then fill in `<github-org>/<app-repo>` inside `changelog.yaml`.
+
+> **Read-only is enough, and matters.** A classic token scoped to `repo` can write to every
+> repository you can reach. This job only reads history from one. If your application repo also
+> dispatches *into* this one — the `repository_dispatch` in the frontend layer's `ci-cd.yaml` — that
+> is a **separate** token living in the application repo, and it is the one that needs
+> `Contents: Read and write`. Do not merge the two into one broadly-scoped token.
+
+### Step 5 — AI review token (optional)
+
+`deepseek-review.yml` posts an AI review comment on pull requests into `dev`.
+
+1. Create an API key at your provider's console (the shipped workflow uses
+   [`hustcer/deepseek-review`](https://github.com/hustcer/deepseek-review), which accepts any
+   OpenAI-compatible endpoint).
+2. Add it as `DEEPSEEK_CODE_REVIEW_TOKEN`.
+3. Confirm **Settings → Actions → General → Workflow permissions** allows pull-request writes.
+
+> **Read this before enabling it.** The workflow uses `pull_request_target`, which runs with your
+> repository secrets in scope so it can comment on fork pull requests. **It therefore must never
+> check out the pull request's code.** The shipped workflow reads the diff through the API. If you
+> modify it, keep that property — adding an `actions/checkout` of the PR ref hands your secrets to
+> anyone who opens a pull request. On a docs repo that now includes a token that reads your
+> application repository.
+
+Not wiring this up? Delete the workflow file.
+
+### Step 6 — Workflow permissions
+
+**Settings → Actions → General → Workflow permissions** → **Read and write permissions**.
+
+Required because `changelog.yaml` commits generated content back to the repository, and
+`strip-ai-on-pr.yml` rewrites the production branch. Both declare `contents: write` at job level;
+the repository setting is a ceiling those declarations cannot exceed.
+
+### Step 7 — Branch protection
+
+**Settings → Rules → Rulesets → New branch ruleset**, applied to `dev` and `prod`:
+
+| Setting | Value | Why |
+| :-- | :-- | :-- |
+| Require a pull request before merging | on | The gate triggers on `pull_request`. Direct pushes bypass it entirely |
+| Require status checks to pass | on, select **Quality Gate** | Without this the gate reports and merges anyway |
+| Require branches to be up to date | on | Otherwise the gate passes against a stale base |
+| Block force pushes | on | The strip pipeline's history is not recoverable from a force push |
+
+Two things must **not** be required checks:
+
+- **`react-doctor`** is advisory and never fails a build. Marking it required makes it a blocking
+  gate it was not designed to be.
+- **`Check Generated Doc TODOs`** emits a warning, not a failure, on purpose — a half-filled
+  generated page is often a legitimate intermediate state.
+
+> **Do not add a rule that blocks the bot.** `changelog.yaml` commits to the repository. If your
+> ruleset requires pull requests with no bypass, the changelog job fails on push. Add the
+> `github-actions` app to the ruleset's **bypass list**, or scope the pull-request requirement so
+> the bot's branch is exempt.
+
+### Step 8 — Dependabot
+
+`.github/dependabot.yml` ships configured. It needs no secret, but it does need
+**Settings → Code security → Dependabot alerts** and **security updates** enabled to be useful.
+
+### Checklist
+
+```
+□ Branches dev and prod created and pushed          ← nothing runs until this
+□ Default branch set to dev
+□ Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  (or replace ci-cd.yaml)
+□ Secret:  APP_REPO_TOKEN — fine-grained, Contents: Read-only, one repo
+□ Secret:  DEEPSEEK_CODE_REVIEW_TOKEN   (or delete deepseek-review.yml)
+□ Variable: CI_RUNNER                   (or leave unset — defaults to ubuntu-latest)
+□ wrangler.jsonc present in the repo root
+□ <github-org>/<app-repo> filled in inside changelog.yaml
+□ Workflow permissions → Read and write
+□ Branch ruleset on dev and prod, with github-actions on the bypass list
+□ react-doctor and Generated Doc TODOs NOT required checks
+□ Dependabot alerts enabled
+□ CODEOWNERS updated from @your-github-handle
+```
+
+### Verifying it without burning minutes
+
+Open one throwaway pull request into `dev` with a whitespace change. That exercises
+`quality-gate.yaml`, `deepseek-review.yml`, and `react-doctor.yml` in a single run.
+
+Test `changelog.yaml` separately with **Actions → Changelog → Run workflow** if you have added a
+`workflow_dispatch` trigger, or by pushing to `prod` once you are ready for a real content
+revision. It commits, so it is not a free dry run.
+
+---
+
 ## Requirements
 
 Nothing is mandatory. Every piece degrades to "delete this file" rather than breaking the rest.
@@ -256,8 +430,10 @@ genericised into `{{DOCS_FRAMEWORK}}` is unusable until filled in, and most peop
 - Replace `ci-cd.yaml` wholesale if you do not deploy to Cloudflare Workers. Editing around it is
   more work than replacing it.
 
-The `sc-` prefix on subagents is only a namespace, so project agents sort together and never collide
-with built-ins. Rename it to your own initials.
+The `agents-` prefix is only a namespace, so project subagents sort together in the picker and never
+collide with a built-in name. Rename it to anything you like — just rename the `name:` field in the
+frontmatter and the row in `.claude/agents/INDEX.md` together, since the gate's index-coverage check
+verifies both directions.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: sc-seo-validator
+name: agents-seo-validator
 description: Validates metadata completeness and discoverability setup for this Nextra docs site.
 model: haiku
 ---
