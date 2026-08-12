@@ -1,0 +1,37 @@
+# Keeps the SHA-pinned actions and package.json overrides moving, so a clean
+# audit today does not rot into a stale one.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      # One PR per slice; security fixes still arrive on their own PRs.
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions:
+        patterns:
+          - '*'

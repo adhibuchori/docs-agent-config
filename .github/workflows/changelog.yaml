@@ -1,0 +1,192 @@
+name: Generate Content
+
+on:
+  push:
+    branches: ['prod']
+  repository_dispatch:
+    types: [app-deployed]
+
+# Shared with strip-ai-on-pr.yml: both push to prod and would race. Never
+# cancel-in-progress — a dropped run loses a content revision for good.
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  generate-content:
+    name: Generate Content
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    # Skip the bot's own commits, or it retriggers itself.
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    permissions:
+      contents: write
+    # Surfaced so the deploy job below can tell a real content revision from a
+    # no-op run; steps.* outputs do not cross the job boundary.
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: prod
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+
+      # Unconditional and dependency-free: reads only git and the GitHub API, and
+      # this repo's own commits move the changelog even when the app has not.
+      - name: Generate Changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_REPO: <github-org>/<app-repo>
+          APP_REPO_TOKEN: ${{ secrets.APP_REPO_TOKEN }}
+          DOCS_REPO: ${{ github.repository }}
+          LOOKBACK_DAYS: 90
+        run: bun run scripts/generate-changelog/index.ts
+
+      # Start of the technical-docs path, dead work on a marker hit. Resolved at
+      # run time and through the REST API — see README § CI/CD for both reasons.
+      - name: Resolve App Source SHA
+        id: app-sha
+        env:
+          APP_REPO_TOKEN: ${{ secrets.APP_REPO_TOKEN }}
+        run: |
+          sha=$(curl --fail-with-body -sS \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${APP_REPO_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/<github-org>/<app-repo>/commits/prod" \
+            | jq -r '.sha // empty')
+          if [ -z "$sha" ]; then
+            echo "::error::Could not resolve the app repo's prod SHA."
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "App source prod is at $sha"
+
+      # Only a marker is cached; the pages live in git. A hit means this exact app
+      # tree was generated from before, so re-running cannot produce a change.
+      - name: Check Generation Marker
+        id: marker
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .generation-marker
+          # The generator is half the input: keyed on the app SHA alone, editing
+          # scripts/generate-docs would hit a stale marker and never publish.
+          key: docs-generated-${{ steps.app-sha.outputs.sha }}-${{ hashFiles('scripts/generate-docs/**', 'scripts/shared/**') }}
+
+      # ts-morph needs the real source tree, so it lands in app-source/ (gitignored)
+      # and is pinned to the resolved SHA, not `prod` — see README § CI/CD.
+      - name: Checkout App Source
+        if: steps.marker.outputs.cache-hit != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: <github-org>/<app-repo>
+          ref: ${{ steps.app-sha.outputs.sha }}
+          token: ${{ secrets.APP_REPO_TOKEN }}
+          path: app-source
+
+      - name: Install Dependencies
+        if: steps.marker.outputs.cache-hit != 'true'
+        run: bun install --frozen-lockfile
+
+      # Not optional: without the app's node_modules ts-morph silently degrades every
+      # react-derived type to `any`, and the wrong docs publish looking healthy.
+      - name: Install App Dependencies
+        if: steps.marker.outputs.cache-hit != 'true'
+        working-directory: app-source
+        run: bun install --frozen-lockfile
+
+      - name: Generate Technical Docs
+        if: steps.marker.outputs.cache-hit != 'true'
+        env:
+          APP_SOURCE_ROOT: ${{ github.workspace }}/app-source
+        run: |
+          bun run docs:generate
+          echo "${{ steps.app-sha.outputs.sha }}" > .generation-marker
+
+      - name: Commit Generated Content
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Both surfaces, so `changed` means "generated content moved", not
+          # "changelog moved". The deploy job gates on it — see README § CI/CD.
+          git add content/changelog.mdx content/technical
+          if git diff --staged --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Generated content unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: update generated content [skip ci]"
+
+          # Rebase and push are two steps: anything landing between them rejects the
+          # push and the regenerated content is lost. Retry rather than drop it.
+          for attempt in 1 2 3; do
+            if git pull --rebase origin prod && git push; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            # Clear a half-finished rebase, or every later attempt just fails with
+            # "rebase in progress".
+            git rebase --abort 2>/dev/null || true
+            echo "push rejected (attempt ${attempt}/3); prod moved underneath us, retrying."
+            sleep 5
+          done
+
+          echo "::error::Could not push the generated content after 3 attempts."
+          exit 1
+
+      # Generated content only ever lands on prod, so dev falls behind and the
+      # next promotion conflicts on it. Copy it across as a plain commit.
+      - name: Sync Generated Content to dev
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          git fetch origin dev prod
+          for attempt in 1 2 3; do
+            git checkout -B dev-sync origin/dev
+            git checkout origin/prod -- content/changelog.mdx content/technical
+            if git diff --cached --quiet; then
+              echo "dev already carries the generated content."
+              exit 0
+            fi
+            # No skip-CI marker here: this workflow only triggers on pushes to prod, so
+            # there is no loop — and a marked dev head makes a promotion PR start no checks.
+            git commit -m "chore: sync generated content to dev"
+            if git push origin dev-sync:dev; then
+              echo "dev now carries the generated content."
+              exit 0
+            fi
+            # Re-fetch before retrying, or every later attempt rebuilds the same
+            # commit on the same stale base and is rejected identically.
+            git fetch origin dev
+            echo "push rejected (attempt ${attempt}/3); dev moved underneath us, retrying."
+            sleep 5
+          done
+
+          echo "::error::Could not sync the generated content to dev after 3 attempts."
+          exit 1
+
+      # Last, never earlier: marking a tree done before its content lands would
+      # make the next run skip generation and deploy the stale pages green.
+      - name: Save Generation Marker
+        if: steps.marker.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .generation-marker
+          key: docs-generated-${{ steps.app-sha.outputs.sha }}-${{ hashFiles('scripts/generate-docs/**', 'scripts/shared/**') }}
+
+  # Sole deploy trigger, last in the chain: it must run after the content commit
+  # lands, and re-runs must deploy too (`changed` is false the second time round).
+  deploy:
+    name: Deploy
+    needs: generate-content
+    if: ${{ !cancelled() && needs.generate-content.result == 'success' && (github.event_name == 'push' || needs.generate-content.outputs.changed == 'true' || github.run_attempt > 1) }}
+    uses: ./.github/workflows/ci-cd.yaml
+    secrets: inherit

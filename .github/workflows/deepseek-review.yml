@@ -1,0 +1,86 @@
+name: DeepSeek Code Review
+
+on:
+  pull_request_target:
+    # No `synchronize`: the action has no sticky comment, so every push would add
+    # another review. Re-run on demand with `/ask-deepseek` instead.
+    types: [opened, reopened]
+    # dev only. A dev -> prod diff re-adds the whole AI config that
+    # strip-ai-on-pr.yml removed, and GitHub answers 406 for a diff that size.
+    branches: [dev]
+  # On-demand: comment `/ask-deepseek` on a PR. Read from the default branch
+  # (prod), so changes here only take effect once promoted.
+  issue_comment:
+    types: [created]
+
+concurrency:
+  # issue_comment has no pull_request object — fall back to the issue number.
+  group: deepseek-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deepseek-review:
+    name: DeepSeek Code Review
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    # The action has no HTTP timeout, so a stalled DeepSeek API hangs the job until
+    # this kills it. Successful runs take under a minute.
+    timeout-minutes: 3
+
+    steps:
+      # Never add actions/checkout here: pull_request_target has secrets, and the
+      # action reads the diff over the API without executing PR code.
+      - name: DeepSeek Code Review
+        uses: hustcer/deepseek-review@eccde2e9781008d795e366b951e313e37af88dd5 # v1
+        with:
+          chat-token: ${{ secrets.DEEPSEEK_CODE_REVIEW_TOKEN }}
+          # The action ignores bots, non-PR issues, and anyone outside
+          # allowed-associations.
+          watch-mention: '/ask-deepseek'
+          allowed-associations: 'OWNER,MEMBER,COLLABORATOR'
+          model: deepseek-v4-pro
+          base-url: https://api.deepseek.com
+          temperature: '0.3'
+          exclude-patterns: 'pnpm-lock.yaml,package-lock.json,bun.lock,*.lock,content/changelog.mdx'
+          sys-prompt: |
+            You are a code reviewer for a Nextra 4.5 documentation site on Next.js
+            15 (App Router) and strict TypeScript. Most changes are MDX content
+            under content/, not application code.
+
+            Label every finding with a severity: CRITICAL (security or data-loss
+            risk — blocks merge), HIGH (bug or significant quality issue), MEDIUM
+            (maintainability concern), LOW (style or minor suggestion).
+
+            What this repo is, so you do not invent findings for things it lacks:
+            - No backend, API, database, auth or i18n. No src/ directory and no
+              hooks/store/api layering.
+            - No test runner at all — never ask for tests.
+            - Styling comes from nextra-theme-docs; there is no Tailwind token system.
+            - The only app code is app/layout.tsx, app/[[...mdxPath]]/page.tsx and
+              components/Mermaid*.tsx.
+
+            Project rules that apply here:
+            - Each directory's _meta.js controls nav order and titles; it must stay
+              in sync with the .mdx files present.
+            - content/changelog.mdx and generated docs come from scripts/ — flag any
+              hand-edit above the custom-section marker.
+            - Diagrams go through components/Mermaid.tsx, not a new library.
+            - Nextra version pins and Node flags in package.json encode known
+              upstream bugs — do not suggest bumping them casually.
+            - Files <=150 lines, functions <=50 lines, nesting <=4 levels, prefer
+              early returns. Immutability: return a new copy, never mutate.
+            - .env.* must never be edited by hand.
+
+            Do NOT report anything the Quality Gate already enforces on this same
+            PR: formatting, lint, type-check, dependency audit, secret scanning,
+            build, source maps.
+
+            Report an issue only when you can name the input or state that triggers
+            it and what breaks as a result. Prefer a few well-evidenced findings
+            over broad coverage. If the diff is sound, say so briefly. Answer in
+            English, formatted as Markdown.
+          user-prompt: |
+            Review the following diff. Cite the file and line for every finding.
