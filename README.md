@@ -219,7 +219,7 @@ because there is less to fill in. The step that can delete files comes last on p
 ## What is deliberately excluded
 
 **No content pipeline code.** `scripts/generate-docs/` and `scripts/generate-changelog/` are
-application code — extractors, renderers, a preservation writer. `SETUP.md` §5 describes the shape
+application code — extractors, renderers, a preservation writer. `SETUP.md` §6 describes the shape
 they should take and the two escaping traps waiting in them, but the implementation is yours.
 
 **No site source.** No `content/`, no `app/`, no `components/`, no `next.config.mjs`, no
@@ -472,7 +472,7 @@ Nothing is mandatory. Every piece degrades to "delete this file" rather than bre
 | For | You need |
 | :-- | :-- |
 | Hooks, commands, subagents | An agent runtime that reads `.claude/` |
-| The quality gate | GitHub Actions, plus the package scripts named in `SETUP.md` §4 |
+| The quality gate | GitHub Actions, plus the package scripts named in `SETUP.md` §5 |
 | `ci-cd.yaml` as shipped | A Cloudflare Workers account and `wrangler.jsonc`. Replace the workflow outright if you deploy elsewhere |
 | `changelog.yaml` | A separate application repository and a token that can read it |
 | Shared docs | Most docs sites need none of the three `.example.md` files. Delete them |
