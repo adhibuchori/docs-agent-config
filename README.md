@@ -240,6 +240,31 @@ A docs site has one wrinkle the other two do not: **it talks to a second reposit
 pipeline reads the application repo's commits, which means a cross-repository token, and that token
 is the one worth being careful with. Skip to [the checklist](#checklist) if you just want the list.
 
+### What costs money, and what does not
+
+**Everything required to make this layer work is free.** Only the enforcement layer on top of it is
+tier-dependent, and it is tier-dependent in one specific way: **private repositories.**
+
+| Feature | Public repo | Private repo on the free plan |
+| :-- | :-- | :-- |
+| Actions minutes | Free, unmetered | Monthly allowance, then billed |
+| Workflows, secrets, variables | Free | Free |
+| Container registry (`ghcr.io`) | Free | Storage allowance, then billed |
+| Dependabot alerts + security updates | Free | **Free** |
+| Secret scanning + push protection | Free | Paid add-on |
+| Code scanning | Free | Paid add-on |
+| `CODEOWNERS` auto-review-request | Free | Paid — Pro, Team, or Enterprise |
+| **Branch protection / rulesets** | **Free** | **Paid — Pro, Team, or Enterprise** |
+
+So the honest summary:
+
+- **Public repository:** every step below is available to you at no cost.
+- **Private repository, free plan:** everything through the container registry works. Branch
+  protection does not — see [Nice to have — branch protection](#nice-to-have--branch-protection) below.
+
+> Plans and limits change. Check GitHub's current pricing page before concluding a feature is out
+> of reach — this table reflects the tiers at the time of writing, not a promise.
+
 ### Step 0 — Create the branches (this is what turns the workflows on)
 
 ```bash
@@ -347,9 +372,20 @@ Required because `changelog.yaml` commits generated content back to the reposito
 `strip-ai-on-pr.yml` rewrites the production branch. Both declare `contents: write` at job level;
 the repository setting is a ceiling those declarations cannot exceed.
 
-### Step 7 — Branch protection
+### Step 7 — Dependabot
 
-**Settings → Rules → Rulesets → New branch ruleset**, applied to `dev` and `prod`:
+`.github/dependabot.yml` ships configured. It needs no secret, but it does need
+**Settings → Code security → Dependabot alerts** and **security updates** enabled to be useful.
+
+### Nice to have — branch protection
+
+**This step is optional, and on a private repository it is a paid feature** (GitHub Pro, Team, or
+Enterprise). On a public repository it is free.
+
+Everything above works without it. What it adds is the difference between the gate **reporting** a
+failure and the gate **preventing** a merge.
+
+If you have it, **Settings → Rules → Rulesets → New branch ruleset**, applied to `dev` and `prod`:
 
 | Setting | Value | Why |
 | :-- | :-- | :-- |
@@ -370,10 +406,32 @@ Two things must **not** be required checks:
 > `github-actions` app to the ruleset's **bypass list**, or scope the pull-request requirement so
 > the bot's branch is exempt.
 
-### Step 8 — Dependabot
+#### If you do not have it
 
-`.github/dependabot.yml` ships configured. It needs no secret, but it does need
-**Settings → Code security → Dependabot alerts** and **security updates** enabled to be useful.
+The gate still runs on every pull request and still shows red or green. What is missing is only the
+block. Three things close most of that gap for free:
+
+**1. Run the gate before you push.** It is the same script CI runs, so there are no surprises:
+
+```bash
+bash .github/scripts/quality-gate.sh origin/dev
+```
+
+**2. Make it automatic with a pre-push hook.** This genuinely enforces — the push does not happen:
+
+```bash
+# .husky/pre-push
+bash .github/scripts/quality-gate.sh origin/dev
+```
+
+Local hooks can be skipped with `--no-verify`, so this is discipline rather than a wall. But it
+catches the ordinary case, which is someone forgetting, not someone deliberately bypassing.
+
+**3. `CODEOWNERS` still requests reviewers.** The shipped file says as much in its own comment:
+without branch protection it is a prompt, not a gate. A prompt is still worth having.
+
+If the repository can be public, making it public is the cheapest way to get real enforcement —
+branch protection, secret scanning, and push protection all become free at once.
 
 ### Checklist
 
@@ -387,10 +445,13 @@ Two things must **not** be required checks:
 □ wrangler.jsonc present in the repo root
 □ <github-org>/<app-repo> filled in inside changelog.yaml
 □ Workflow permissions → Read and write
+□ Dependabot alerts enabled
+
+Nice to have — free on public repos, paid on private:
 □ Branch ruleset on dev and prod, with github-actions on the bypass list
 □ react-doctor and Generated Doc TODOs NOT required checks
-□ Dependabot alerts enabled
-□ CODEOWNERS updated from @your-github-handle
+□ CODEOWNERS updated from @your-github-handle (the file is free to add;
+  auto-requesting reviewers from it needs a paid plan on a private repo)
 ```
 
 ### Verifying it without burning minutes
