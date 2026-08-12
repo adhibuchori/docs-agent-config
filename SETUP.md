@@ -61,6 +61,24 @@ This is what the agent actually reaches for on every task. Hooks stop bad edits;
 well it works in the first place**, so it is worth ten minutes even though nothing breaks if you
 skip it.
 
+### Every tool by name, and where it is covered
+
+Search this table first — several tools below are discussed under generic headings, so their names
+only appear in prose.
+
+| Tool | What it is | Ships here? | Covered in |
+| :-- | :-- | :-- | :-- |
+| **Serena** | Semantic code search and edit over a language server | `.mcp.json` | [below](#serena--install-it-or-delete-the-rules-that-assume-it) |
+| **Context7** | Live library documentation lookup | `.mcp.json` | server table below |
+| **GitHub MCP** | Pull requests, issues, and reviews inside a session | `.mcp.json` | server table below |
+| **Postgres MCP** | Database schema, health, and query plans (`db-dev`, `db-prod`) | `.mcp.json` | server table below · `DATABASE.example.md` |
+| **Dokploy · Cloudflare · Hostinger** | Deployment, DNS, and VPS control | `.mcp.json` | server table below — delete if not your vendors |
+| **RTK** | Token-reducing shell proxy | **No** — machine-local | [Command wrappers](#command-wrappers--rtk-or-your-own) |
+| **Ponytail** | Context-trimming plugin | **No** — machine-local | [Plugins](#plugins--ponytail-or-your-own) |
+| **DeepSeek Code Review** | AI review comment on pull requests | `.github/workflows/` | [below](#ai-code-review-on-pull-requests--deepseek) · README § GitHub configuration |
+| **react-doctor** | Framework health checks — **advisory, never fails a build** | `.github/workflows/react-doctor.yml` | README § Quality gate. Do not make it a required check |
+| **impeccable** | Interface design and polish skill | **No** — own installer | `npx impeccable install`, if your theme needs design work |
+
 ### The servers in `.mcp.json`
 
 Eleven ship. **Most projects should delete most of them.** Every connected server spends context on
@@ -126,7 +144,7 @@ umbrella is machine-local configuration that a fresh clone does not inherit, and
 resolve against the umbrella root rather than your repo — which fails loudly, but only if you know
 to expect it.
 
-### Command wrappers
+### Command wrappers — RTK, or your own
 
 If you route shell commands through a wrapper — a token-reducing proxy such as **RTK**, a sandbox,
 an audit recorder — declare it in `CLAUDE.md` § Command Wrapper **as a hard rule**, and prefix every
@@ -140,7 +158,7 @@ Why it has to be a hard rule rather than a note: a wrapper mentioned in passing 
 moment a task gets busy, and then half your commands are wrapped and half are not — which is worse
 than never wrapping at all, because the numbers stop meaning anything.
 
-### Plugins
+### Plugins — Ponytail, or your own
 
 `.claude/settings.json` ships with **no plugins enabled**, and that is deliberate rather than an
 oversight.
@@ -162,7 +180,7 @@ If you use plugins, they go in the same file:
 Keep them out of `.claude/settings.local.json` if the whole team should get them, and in it if the
 choice is yours alone. The `.gitignore` here already excludes the local file.
 
-### AI code review on pull requests
+### AI code review on pull requests — DeepSeek
 
 `.github/workflows/deepseek-review.yml` posts an AI review comment on pull requests into `dev`,
 using [`hustcer/deepseek-review`](https://github.com/hustcer/deepseek-review) — which accepts any
