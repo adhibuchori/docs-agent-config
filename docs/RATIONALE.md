@@ -403,7 +403,7 @@ one can cost a secret.
 None of that is worth anything unproven. `bash scripts/check/hook-probes.sh` feeds every hook the
 JSON Claude Code sends, in throwaway fixtures, and checks both what it must refuse and what it must
 let through. It covers every row of the rule table, a linked git worktree, every cell of the
-fail-mode table, and each hook's configuration keys: 2,362 probes here, under macOS `/bin/bash` 3.2
+fail-mode table, and each hook's configuration keys: 2,365 probes here, under macOS `/bin/bash` 3.2
 in about nine minutes. The gate list runs it whenever a hook, `settings.json`, the probes, the
 unlock script or `scripts/env/` change, and CI runs it on every pull request. Add a rule with one
 probe it must stop and one it must allow, then disable the rule and watch the probe fail, so the

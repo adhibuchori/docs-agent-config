@@ -457,7 +457,7 @@ Steps 1 to 7 are the minimum; [SETUP.md](SETUP.md) has the full path, about fort
    which runs every line of the list:
 
    ```bash
-   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2362 passed, 0 failed
+   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2365 passed, 0 failed
    bash scripts/check/gates.sh              # 13 gate(s) ran, 0 failed
    ```
 
@@ -721,7 +721,7 @@ checks and more in 22 steps.
 | [`gates.sh`](scripts/check/gates.sh) + [`gates.list`](scripts/check/gates.list) | Runs every gate in the list: one log per gate, a table at the end, the tail of each failure | `bash scripts/check/gates.sh`; `--paths <files>` limits format and lint to your files; pre-commit runs `--hook --fail-fast` | Your machine and the commit hook run one list, so they cannot disagree |
 | [`ai-config.sh`](scripts/check/ai-config.sh) | Keeps `CLAUDE.md` plus the always-loaded rules under 15,000 bytes, keeps `@` imports out of `CLAUDE.md`, checks every wired hook exists and every MCP server is pinned | `bash scripts/check/ai-config.sh` (a gate) | The always-loaded context stays small, and a renamed hook cannot silently stop running |
 | [`ai-config-probes.sh`](scripts/check/ai-config-probes.sh) | Proves the MCP pin rule both ways, in a temp repo | `bash scripts/check/ai-config-probes.sh` (a gate) | The pin check cannot quietly pass everything |
-| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Feeds every hook the JSON Claude Code sends and checks exit code and message: 2,362 probes, fail modes and worktrees included | `/bin/bash scripts/check/hook-probes.sh` (about nine minutes; a gate when a hook file is staged) | Every rule is proven to block what it must and to allow what it must |
+| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Feeds every hook the JSON Claude Code sends and checks exit code and message: 2,365 probes, fail modes and worktrees included | `/bin/bash scripts/check/hook-probes.sh` (about nine minutes; a gate when a hook file is staged) | Every rule is proven to block what it must and to allow what it must |
 | [`secrets.sh`](scripts/check/secrets.sh) | Scans the staged diff for secrets with gitleaks and `.gitleaks.toml`; fails when gitleaks is missing, warns when its release is not CI's pin | `bash scripts/check/secrets.sh` (a gate on every commit) | A key is stopped before the commit exists |
 | [`skills.sh`](scripts/check/skills.sh) | Scans commands, subagents, hooks and skills with SkillSpector, pinned to one commit, against `.skillspector-baseline.yaml` | `bash scripts/check/skills.sh --staged` (a gate) | A prompt-injection line in a command is caught like a vulnerable dependency |
 | [`double-assertion.sh`](scripts/check/double-assertion.sh) | Refuses `as unknown as` in TypeScript | `bash scripts/check/double-assertion.sh` (a gate) | The compiler's type check cannot be switched off quietly |
@@ -971,7 +971,7 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
   [fail-mode table](.claude/hooks/README.md#fail-modes) lists every case per hook.
 - **Every rule is proven both ways.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) holds 845
   rows for `safety-check.sh` (569 it must block, 276 it must allow), and
-  [`hook-probes.sh`](scripts/check/hook-probes.sh) runs 2,362 probes in total across every hook,
+  [`hook-probes.sh`](scripts/check/hook-probes.sh) runs 2,365 probes in total across every hook,
   fail mode and worktree. Run them under macOS's bash 3.2 with
   `/bin/bash scripts/check/hook-probes.sh`.
 - **Layers, not one wall.** The hooks read command text; the `deny` list in `.claude/settings.json`
@@ -1035,7 +1035,7 @@ times as upper bounds:
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | 0.11 to 0.14 s each |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | 0.08 to 0.10 s each |
 | A commit that stages only content pages | the `all` gates only: format, lint, the staged secret scan and the AI config check |
-| `/bin/bash scripts/check/hook-probes.sh` | 8 min 9 s for 2,362 probes |
+| `/bin/bash scripts/check/hook-probes.sh` | 8 min 9 s for 2,365 probes |
 | A commit that stages a hook file, or `bash scripts/check/gates.sh` | the hook probes above, plus about 2 s for the other 12 gates |
 | CI | only on pull requests: nothing on a push, nothing on a schedule |
 

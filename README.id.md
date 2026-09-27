@@ -474,7 +474,7 @@ puluh menit.
    dan gate, yang menjalankan setiap baris daftarnya:
 
    ```bash
-   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2362 passed, 0 failed
+   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2365 passed, 0 failed
    bash scripts/check/gates.sh              # 13 gate(s) ran, 0 failed
    ```
 
@@ -745,7 +745,7 @@ file yang di-stage; CI menjalankan pemeriksaan yang sama dan lebih banyak lagi d
 | [`gates.sh`](scripts/check/gates.sh) + [`gates.list`](scripts/check/gates.list) | Menjalankan setiap gate dalam daftar: satu log per gate, tabel di akhir, ekor setiap kegagalan | `bash scripts/check/gates.sh`; `--paths <files>` membatasi format dan lint ke file Anda; pre-commit menjalankan `--hook --fail-fast` | Mesin Anda dan hook commit menjalankan satu daftar yang sama, jadi tidak bisa berbeda |
 | [`ai-config.sh`](scripts/check/ai-config.sh) | Menjaga `CLAUDE.md` plus rule yang selalu dimuat di bawah 15.000 byte, menjauhkan import `@` dari `CLAUDE.md`, memastikan setiap hook yang di-wire ada dan setiap server MCP di-pin | `bash scripts/check/ai-config.sh` (sebuah gate) | Konteks yang selalu dimuat tetap kecil, dan hook yang berganti nama tidak bisa diam-diam berhenti berjalan |
 | [`ai-config-probes.sh`](scripts/check/ai-config-probes.sh) | Membuktikan rule pin MCP dua arah, di repo sementara | `bash scripts/check/ai-config-probes.sh` (sebuah gate) | Pemeriksaan pin tidak bisa diam-diam meloloskan semuanya |
-| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Memberi setiap hook JSON yang dikirim Claude Code lalu memeriksa exit code dan pesannya: 2.362 probe, termasuk mode gagal dan worktree | `/bin/bash scripts/check/hook-probes.sh` (sekitar sembilan menit; menjadi gate saat file hook di-stage) | Setiap rule terbukti memblokir yang harus diblokir dan mengizinkan yang harus diizinkan |
+| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Memberi setiap hook JSON yang dikirim Claude Code lalu memeriksa exit code dan pesannya: 2.365 probe, termasuk mode gagal dan worktree | `/bin/bash scripts/check/hook-probes.sh` (sekitar sembilan menit; menjadi gate saat file hook di-stage) | Setiap rule terbukti memblokir yang harus diblokir dan mengizinkan yang harus diizinkan |
 | [`secrets.sh`](scripts/check/secrets.sh) | Memindai diff yang di-stage untuk mencari rahasia dengan gitleaks dan `.gitleaks.toml`; gagal bila gitleaks tidak ada, memberi peringatan bila rilisnya bukan pin CI | `bash scripts/check/secrets.sh` (gate di setiap commit) | Sebuah key dihentikan sebelum commit-nya ada |
 | [`skills.sh`](scripts/check/skills.sh) | Memindai perintah, subagen, hook, dan skill dengan SkillSpector yang di-pin ke satu commit, terhadap `.skillspector-baseline.yaml` | `bash scripts/check/skills.sh --staged` (sebuah gate) | Baris prompt-injection di sebuah perintah tertangkap seperti dependency yang rentan |
 | [`double-assertion.sh`](scripts/check/double-assertion.sh) | Menolak `as unknown as` di TypeScript | `bash scripts/check/double-assertion.sh` (sebuah gate) | Pemeriksaan tipe compiler tidak bisa dimatikan diam-diam |
@@ -1005,7 +1005,7 @@ diketahui, dijelaskan di [`docs/unlock.md`](docs/unlock.md):
   kasus per hook.
 - **Setiap rule dibuktikan dua arah.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) memuat 845
   baris untuk `safety-check.sh` (569 yang harus diblokir, 276 yang harus diizinkan), dan
-  [`hook-probes.sh`](scripts/check/hook-probes.sh) menjalankan total 2.362 probe untuk setiap hook,
+  [`hook-probes.sh`](scripts/check/hook-probes.sh) menjalankan total 2.365 probe untuk setiap hook,
   mode gagal, dan worktree. Jalankan di bawah bash 3.2 bawaan macOS dengan
   `/bin/bash scripts/check/hook-probes.sh`.
 - **Berlapis, bukan satu tembok.** Hook membaca teks perintah; daftar `deny` di
@@ -1074,7 +1074,7 @@ sampai 39 selama gate berjalan), jadi anggap angka waktunya sebagai batas atas:
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | masing-masing 0,11 sampai 0,14 dtk |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | masing-masing 0,08 sampai 0,10 dtk |
 | Commit yang hanya men-stage halaman konten | hanya gate `all`: format, lint, pemindaian rahasia yang di-stage, dan pemeriksaan konfigurasi AI |
-| `/bin/bash scripts/check/hook-probes.sh` | 8 mnt 9 dtk untuk 2.362 probe |
+| `/bin/bash scripts/check/hook-probes.sh` | 8 mnt 9 dtk untuk 2.365 probe |
 | Commit yang men-stage file hook, atau `bash scripts/check/gates.sh` | probe hook di atas, ditambah sekitar 2 dtk untuk 12 gate lainnya |
 | CI | hanya di pull request: tidak ada saat push, tidak ada yang terjadwal |
 
