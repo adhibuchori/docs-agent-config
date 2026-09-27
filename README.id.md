@@ -60,7 +60,7 @@ menampilkan dry run dan baru menulis setelah Anda membalas **go**.
    [agen](#agen), [skill](#skill), [aturan](#aturan), [anti-pattern](#anti-pattern),
    [pemeriksaan dan gate](#pemeriksaan-dan-gate), [workflow CI](#workflow-ci),
    [file konfigurasi](#file-konfigurasi)
-9. [Konfigurasi](#konfigurasi)
+9. [Konfigurasi](#konfigurasi) dan [memakai RTK](#memakai-rtk)
 10. [Membuka kunci `.env` dan DB produksi](#membuka-kunci-env-dan-db-produksi)
 11. [CI: hanya pull request](#ci-hanya-pull-request)
 12. [Model keamanan](#model-keamanan),
@@ -474,8 +474,8 @@ puluh menit.
    dan gate, yang menjalankan setiap baris daftarnya:
 
    ```bash
-   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2288 passed, 0 failed
-   bash scripts/check/gates.sh              # 12 gate(s) ran, 0 failed
+   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2362 passed, 0 failed
+   bash scripts/check/gates.sh              # 13 gate(s) ran, 0 failed
    ```
 
 **Berikutnya:** buka sesi dan minta agen mengedit halaman hasil generate. Permintaannya ditolak.
@@ -745,7 +745,8 @@ file yang di-stage; CI menjalankan pemeriksaan yang sama dan lebih banyak lagi d
 | [`gates.sh`](scripts/check/gates.sh) + [`gates.list`](scripts/check/gates.list) | Menjalankan setiap gate dalam daftar: satu log per gate, tabel di akhir, ekor setiap kegagalan | `bash scripts/check/gates.sh`; `--paths <files>` membatasi format dan lint ke file Anda; pre-commit menjalankan `--hook --fail-fast` | Mesin Anda dan hook commit menjalankan satu daftar yang sama, jadi tidak bisa berbeda |
 | [`ai-config.sh`](scripts/check/ai-config.sh) | Menjaga `CLAUDE.md` plus rule yang selalu dimuat di bawah 15.000 byte, menjauhkan import `@` dari `CLAUDE.md`, memastikan setiap hook yang di-wire ada dan setiap server MCP di-pin | `bash scripts/check/ai-config.sh` (sebuah gate) | Konteks yang selalu dimuat tetap kecil, dan hook yang berganti nama tidak bisa diam-diam berhenti berjalan |
 | [`ai-config-probes.sh`](scripts/check/ai-config-probes.sh) | Membuktikan rule pin MCP dua arah, di repo sementara | `bash scripts/check/ai-config-probes.sh` (sebuah gate) | Pemeriksaan pin tidak bisa diam-diam meloloskan semuanya |
-| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Memberi setiap hook JSON yang dikirim Claude Code lalu memeriksa exit code dan pesannya: 2.288 probe, termasuk mode gagal dan worktree | `/bin/bash scripts/check/hook-probes.sh` (sekitar sembilan menit; menjadi gate saat file hook di-stage) | Setiap rule terbukti memblokir yang harus diblokir dan mengizinkan yang harus diizinkan |
+| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Memberi setiap hook JSON yang dikirim Claude Code lalu memeriksa exit code dan pesannya: 2.362 probe, termasuk mode gagal dan worktree | `/bin/bash scripts/check/hook-probes.sh` (sekitar sembilan menit; menjadi gate saat file hook di-stage) | Setiap rule terbukti memblokir yang harus diblokir dan mengizinkan yang harus diizinkan |
+| [`secrets.sh`](scripts/check/secrets.sh) | Memindai diff yang di-stage untuk mencari rahasia dengan gitleaks dan `.gitleaks.toml`; gagal bila gitleaks tidak ada, memberi peringatan bila rilisnya bukan pin CI | `bash scripts/check/secrets.sh` (gate di setiap commit) | Sebuah key dihentikan sebelum commit-nya ada |
 | [`skills.sh`](scripts/check/skills.sh) | Memindai perintah, subagen, hook, dan skill dengan SkillSpector yang di-pin ke satu commit, terhadap `.skillspector-baseline.yaml` | `bash scripts/check/skills.sh --staged` (sebuah gate) | Baris prompt-injection di sebuah perintah tertangkap seperti dependency yang rentan |
 | [`double-assertion.sh`](scripts/check/double-assertion.sh) | Menolak `as unknown as` di TypeScript | `bash scripts/check/double-assertion.sh` (sebuah gate) | Pemeriksaan tipe compiler tidak bisa dimatikan diam-diam |
 | [`folder-shape.mjs`](scripts/check/folder-shape.mjs) | Melaporkan pelanggaran bentuk folder SHAPE-1 sampai SHAPE-4 | `node scripts/check/folder-shape.mjs` (sebuah gate); `--warn` hanya melapor | Struktur folder tetap mudah dijelajahi saat tumbuh |
@@ -767,7 +768,7 @@ Sebuah commit hanya menjalankan baris yang dibutuhkan file yang di-stage:
 
 | Gate | Berjalan untuk commit yang men-stage |
 | :-- | :-- |
-| format dan lint (`@format`) · batas byte konfigurasi AI, wiring hook, dan pin MCP | apa saja |
+| format dan lint (`@format`) · pemindaian rahasia yang di-stage · batas byte konfigurasi AI, wiring hook, dan pin MCP | apa saja |
 | type check · tanpa double assertion · bentuk folder · dead code (Knip) · gaya komentar · panjang blok komentar · probe pin MCP | kode |
 | penyimpangan cermin perintah | perintah atau subagen, atau kode |
 | probe hook | sebuah hook, `settings.json`, probe-nya, `scripts/ops/unlock.sh` atau `scripts/env/` |
@@ -887,6 +888,22 @@ Tempat lain untuk menyetel lapisan ini:
 
 ---
 
+### Memakai RTK
+
+[RTK](https://github.com/rtk-ai/rtk) adalah proxy command line opsional yang memendekkan output
+perintah sebelum dibaca agen; hook Claude Code miliknya menulis ulang `git diff` menjadi `rtk git
+diff`. Template ini tidak pernah memasangnya dan bekerja sama saja tanpanya.
+
+- **Guard melihat menembusnya.** `safety-check.sh` membaca `rtk <perintah>` dan `rtk proxy
+  <perintah>` sebagai perintah yang dijalankannya, jadi `rtk git push --force origin main` ditolak
+  sama seperti push biasa. 37 baris di `scripts/check/hook-probes.tsv` membuktikannya ke dua arah.
+- **Langkah yang butuh output persis melewatinya.** Langkah yang memutuskan dari apa yang dicetak
+  sebuah perintah (diff kosong, seluruh diff yang dibaca review, status CI) harus melihat semuanya,
+  sedangkan ringkasan RTK bisa membuang baris atau mencetak satu baris untuk diff kosong. Gate
+  berjalan di dalam skrip (`gates.sh`, `pr-ready.sh`, `secrets.sh`), yang tidak pernah ditulis ulang
+  RTK; bila sebuah command atau agen menjalankan `git`, `grep`, atau `gh` sendiri, ia meminta `rtk
+  proxy <perintah>` saat RTK terpasang.
+
 ## Membuka kunci `.env` dan DB produksi
 
 <picture>
@@ -986,9 +1003,9 @@ diketahui, dijelaskan di [`docs/unlock.md`](docs/unlock.md):
   diperiksanya (payload rusak, penganalisis yang crash atau macet). Hook umpan balik yang tidak bisa
   bekerja memilih diam. [Tabel mode gagal](.claude/hooks/README.md#fail-modes) mencantumkan setiap
   kasus per hook.
-- **Setiap rule dibuktikan dua arah.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) memuat 808
-  baris untuk `safety-check.sh` (540 yang harus diblokir, 268 yang harus diizinkan), dan
-  [`hook-probes.sh`](scripts/check/hook-probes.sh) menjalankan total 2.288 probe untuk setiap hook,
+- **Setiap rule dibuktikan dua arah.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) memuat 845
+  baris untuk `safety-check.sh` (569 yang harus diblokir, 276 yang harus diizinkan), dan
+  [`hook-probes.sh`](scripts/check/hook-probes.sh) menjalankan total 2.362 probe untuk setiap hook,
   mode gagal, dan worktree. Jalankan di bawah bash 3.2 bawaan macOS dengan
   `/bin/bash scripts/check/hook-probes.sh`.
 - **Berlapis, bukan satu tembok.** Hook membaca teks perintah; daftar `deny` di
@@ -1056,9 +1073,9 @@ sampai 39 selama gate berjalan), jadi anggap angka waktunya sebagai batas atas:
 | `safety-check.sh` untuk satu perintah | sekitar 0,23 dtk (198 sampai 202 ms sebelum aturan skrip guard, yang menambah sekitar 17%; versi lama dan baru dijalankan berdampingan) |
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | masing-masing 0,11 sampai 0,14 dtk |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | masing-masing 0,08 sampai 0,10 dtk |
-| Commit yang hanya men-stage halaman konten | hanya gate `all`: format, lint, dan pemeriksaan konfigurasi AI |
-| `/bin/bash scripts/check/hook-probes.sh` | 8 mnt 53 dtk untuk 2.288 probe |
-| Commit yang men-stage file hook, atau `bash scripts/check/gates.sh` | probe hook di atas, ditambah sekitar 2 dtk untuk 11 gate lainnya |
+| Commit yang hanya men-stage halaman konten | hanya gate `all`: format, lint, pemindaian rahasia yang di-stage, dan pemeriksaan konfigurasi AI |
+| `/bin/bash scripts/check/hook-probes.sh` | 8 mnt 9 dtk untuk 2.362 probe |
+| Commit yang men-stage file hook, atau `bash scripts/check/gates.sh` | probe hook di atas, ditambah sekitar 2 dtk untuk 12 gate lainnya |
 | CI | hanya di pull request: tidak ada saat push, tidak ada yang terjadwal |
 
 `post-edit.sh` menambah waktu yang dipakai formatter dan linter Anda sendiri pada file itu (timeout

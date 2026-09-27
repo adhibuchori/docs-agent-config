@@ -57,7 +57,7 @@ run and writes only when you reply **go**. [Prefer plugins?](#prefer-plugins) co
    [commands](#commands), [agents](#agents), [skills](#skills), [rules](#rules),
    [anti-patterns](#anti-patterns), [checks and gates](#checks-and-gates),
    [CI workflows](#ci-workflows), [config files](#config-files)
-9. [Configuration](#configuration)
+9. [Configuration](#configuration) and [using RTK](#using-rtk)
 10. [Unlocking `.env` and the production DB](#unlocking-env-and-the-production-db)
 11. [CI: pull requests only](#ci-pull-requests-only)
 12. [Security model](#security-model), [what the hooks refuse](#what-the-hooks-refuse-and-how-to-turn-one-off)
@@ -457,8 +457,8 @@ Steps 1 to 7 are the minimum; [SETUP.md](SETUP.md) has the full path, about fort
    which runs every line of the list:
 
    ```bash
-   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2288 passed, 0 failed
-   bash scripts/check/gates.sh              # 12 gate(s) ran, 0 failed
+   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2362 passed, 0 failed
+   bash scripts/check/gates.sh              # 13 gate(s) ran, 0 failed
    ```
 
 **Next:** open a session and ask the agent to edit a generated page. It is refused. That is the
@@ -721,7 +721,8 @@ checks and more in 22 steps.
 | [`gates.sh`](scripts/check/gates.sh) + [`gates.list`](scripts/check/gates.list) | Runs every gate in the list: one log per gate, a table at the end, the tail of each failure | `bash scripts/check/gates.sh`; `--paths <files>` limits format and lint to your files; pre-commit runs `--hook --fail-fast` | Your machine and the commit hook run one list, so they cannot disagree |
 | [`ai-config.sh`](scripts/check/ai-config.sh) | Keeps `CLAUDE.md` plus the always-loaded rules under 15,000 bytes, keeps `@` imports out of `CLAUDE.md`, checks every wired hook exists and every MCP server is pinned | `bash scripts/check/ai-config.sh` (a gate) | The always-loaded context stays small, and a renamed hook cannot silently stop running |
 | [`ai-config-probes.sh`](scripts/check/ai-config-probes.sh) | Proves the MCP pin rule both ways, in a temp repo | `bash scripts/check/ai-config-probes.sh` (a gate) | The pin check cannot quietly pass everything |
-| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Feeds every hook the JSON Claude Code sends and checks exit code and message: 2,288 probes, fail modes and worktrees included | `/bin/bash scripts/check/hook-probes.sh` (about nine minutes; a gate when a hook file is staged) | Every rule is proven to block what it must and to allow what it must |
+| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Feeds every hook the JSON Claude Code sends and checks exit code and message: 2,362 probes, fail modes and worktrees included | `/bin/bash scripts/check/hook-probes.sh` (about nine minutes; a gate when a hook file is staged) | Every rule is proven to block what it must and to allow what it must |
+| [`secrets.sh`](scripts/check/secrets.sh) | Scans the staged diff for secrets with gitleaks and `.gitleaks.toml`; fails when gitleaks is missing, warns when its release is not CI's pin | `bash scripts/check/secrets.sh` (a gate on every commit) | A key is stopped before the commit exists |
 | [`skills.sh`](scripts/check/skills.sh) | Scans commands, subagents, hooks and skills with SkillSpector, pinned to one commit, against `.skillspector-baseline.yaml` | `bash scripts/check/skills.sh --staged` (a gate) | A prompt-injection line in a command is caught like a vulnerable dependency |
 | [`double-assertion.sh`](scripts/check/double-assertion.sh) | Refuses `as unknown as` in TypeScript | `bash scripts/check/double-assertion.sh` (a gate) | The compiler's type check cannot be switched off quietly |
 | [`folder-shape.mjs`](scripts/check/folder-shape.mjs) | Reports folder-shape violations SHAPE-1 to SHAPE-4 | `node scripts/check/folder-shape.mjs` (a gate); `--warn` only reports | The tree stays navigable as it grows |
@@ -743,7 +744,7 @@ A commit runs only the lines its staged files need:
 
 | Gate | Runs for a commit that stages |
 | :-- | :-- |
-| format and lint (`@format`) · AI config budget, hook wiring and MCP pins | anything |
+| format and lint (`@format`) · staged secret scan · AI config budget, hook wiring and MCP pins | anything |
 | type check · no double assertion · folder shape · dead code (Knip) · comment style · comment block length · MCP pin probes | code |
 | command mirror drift | commands or subagents, or code |
 | hook probes | a hook, `settings.json`, the probes, `scripts/ops/unlock.sh` or `scripts/env/` |
@@ -862,6 +863,21 @@ The other places you tune the layer:
 
 ---
 
+### Using RTK
+
+[RTK](https://github.com/rtk-ai/rtk) is an optional command-line proxy that shortens command output
+before the agent reads it; its Claude Code hook rewrites `git diff` into `rtk git diff`. This
+template never installs it and works the same without it.
+
+- **The guards see through it.** `safety-check.sh` reads `rtk <command>` and `rtk proxy <command>`
+  as the command they run, so `rtk git push --force origin main` is refused like the plain push. 37
+  rows in `scripts/check/hook-probes.tsv` prove it both ways.
+- **Exact-output steps bypass it.** A step that decides from what a command prints (an empty diff,
+  the whole diff a review reads, CI status) must see all of it, and RTK's summary can drop lines or
+  print one for an empty diff. The gates run inside scripts (`gates.sh`, `pr-ready.sh`,
+  `secrets.sh`), which RTK never rewrites; where a command or agent runs `git`, `grep` or `gh`
+  itself, it says to use `rtk proxy <command>` when RTK is installed.
+
 ## Unlocking `.env` and the production DB
 
 <picture>
@@ -953,9 +969,9 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
 - **Guards fail closed; feedback hooks fail open.** A guard refuses what it cannot check (a bad
   payload, a crashed or hanging analyzer). A feedback hook that cannot do its job stays silent. The
   [fail-mode table](.claude/hooks/README.md#fail-modes) lists every case per hook.
-- **Every rule is proven both ways.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) holds 808
-  rows for `safety-check.sh` (540 it must block, 268 it must allow), and
-  [`hook-probes.sh`](scripts/check/hook-probes.sh) runs 2,288 probes in total across every hook,
+- **Every rule is proven both ways.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) holds 845
+  rows for `safety-check.sh` (569 it must block, 276 it must allow), and
+  [`hook-probes.sh`](scripts/check/hook-probes.sh) runs 2,362 probes in total across every hook,
   fail mode and worktree. Run them under macOS's bash 3.2 with
   `/bin/bash scripts/check/hook-probes.sh`.
 - **Layers, not one wall.** The hooks read command text; the `deny` list in `.claude/settings.json`
@@ -1018,9 +1034,9 @@ times as upper bounds:
 | `safety-check.sh` on one command | about 0.23 s (198 to 202 ms before the guard-script rules, which add about 17%; old and new run side by side) |
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | 0.11 to 0.14 s each |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | 0.08 to 0.10 s each |
-| A commit that stages only content pages | the `all` gates only: format, lint and the AI config check |
-| `/bin/bash scripts/check/hook-probes.sh` | 8 min 53 s for 2,288 probes |
-| A commit that stages a hook file, or `bash scripts/check/gates.sh` | the hook probes above, plus about 2 s for the other 11 gates |
+| A commit that stages only content pages | the `all` gates only: format, lint, the staged secret scan and the AI config check |
+| `/bin/bash scripts/check/hook-probes.sh` | 8 min 9 s for 2,362 probes |
+| A commit that stages a hook file, or `bash scripts/check/gates.sh` | the hook probes above, plus about 2 s for the other 12 gates |
 | CI | only on pull requests: nothing on a push, nothing on a schedule |
 
 `post-edit.sh` adds the time your own formatter and linter take on the file (60 s timeout).
