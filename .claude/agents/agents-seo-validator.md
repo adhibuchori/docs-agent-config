@@ -38,6 +38,18 @@ Recommended, flag as suggestions (not yet implemented in this repo — do not tr
 
 Do not block a PR solely because a robots file or a sitemap does not exist — a missing one is a pre-existing gap, not a regression. Only block if a change actively removes or breaks something that currently works. A site kept private behind an access policy should not be indexed at all: there, a robots file that disallows everything is the correct baseline.
 
+### A private docs site
+
+When the site is behind an access policy or `noindex` on purpose, findability means the sidebar,
+the page titles and the built-in search, not search engines. Never report robots, a sitemap, share
+images or structured data as missing there. Check instead:
+
+- Every page is reachable through `_meta.js`, and sidebar labels are readable titles, not file names.
+- Each page's front matter has an accurate `title` and `description`.
+- `docsRepositoryBase` points at this repo, so "Edit this page" opens the right file.
+- The build still ends with the search-index step.
+- Severity: CRITICAL when the site would become public; HIGH when a page cannot be found.
+
 ## Output Format
 
 ```text

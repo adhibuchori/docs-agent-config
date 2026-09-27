@@ -47,6 +47,12 @@ The Worker serves assets only. Flag a change that:
 - sets `workers_dev` or `preview_urls` to anything but `false`: each one opens a second hostname that an access policy bound to the real hostname does not cover, and turning off one leaves the other open
 - adds a route or custom domain the change does not explain
 
+### 4b. Third-Party Content in MDX
+
+- An external `<script>` or `<iframe>` embed from a domain the site has not allowlisted (and the
+  CSP does not name).
+- A `javascript:` or `data:` URL in a link, an image or an embed.
+
 ### 5. Settings Protection
 
 Remind if any change touches:

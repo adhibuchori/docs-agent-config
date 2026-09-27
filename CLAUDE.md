@@ -45,7 +45,10 @@ call the full 600000 ms timeout, or the tool stops it at two minutes.
 `bun run build` (never `bun build`) is not a gate; run it after a structural change and before a
 PR. There is no test suite: do not invent `bun test` commands. `bun run docs:generate` and
 `bun run changelog:generate` rebuild the generated pages; re-run them when their source or the git
-history changed, then review the generated MDX.
+history changed, then review the generated MDX. The reference generator reads the documented app
+from a sibling folder, so that repo must be checked out beside this one (the generator stops when it
+is not); a changelog built from the app's history through the GitHub API needs a read-only token in
+this repo's CI secrets.
 
 No explicit `any` and no `as unknown as` in `.ts`/`.tsx`: `.claude/rules/typescript/types.md` says
 what to use instead.
