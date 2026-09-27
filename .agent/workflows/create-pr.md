@@ -19,6 +19,9 @@ git log origin/dev..HEAD --oneline
 git diff origin/dev...HEAD --stat
 ```
 
+With RTK installed, run the `git log` and `git diff` lines as `rtk proxy git …`: its rewrite drops
+merge commits from `--oneline` and reshapes `--stat`, and the PR body lists both.
+
 The base is `dev` (CLAUDE.md § Branching). On `dev`, `prod` or the default branch, stop: a PR
 starts from an `internal/{scope}` branch, and a promotion PR into `prod` is `/promote`'s job.
 

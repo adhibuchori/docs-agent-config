@@ -15,7 +15,8 @@ This workflow ensures all quality gates pass, inspects the staged changes, and g
    - **Timeout**: the full run includes the hook probes, about nine minutes. Give that Bash call the full 600000 ms timeout; the default stops it at two minutes.
    - **Action**: if one fails, fix the cause before proceeding. Do not proceed if the state is broken.
 
-2. **Inspect Staged Changes**: `git diff --staged` and `git status`
+2. **Inspect Staged Changes**: `git diff --staged` and `git status`, read whole (with RTK installed,
+   `rtk proxy git diff --staged` and `rtk proxy git status`: its rewrite condenses both)
    - **Goal**: understand what is being committed — no accidental files (a real env file, hand-edited generated pages, etc.).
    - **Never commit**: `.env*` files other than the `.example` templates, and a generated page edited by hand.
    - **`.claude/settings.json`**: only as its own reviewed commit, together with the hooks it wires.

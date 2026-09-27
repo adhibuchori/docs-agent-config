@@ -32,7 +32,8 @@ bash scripts/check/gates.sh
 git diff --cached
 ```
 
-Read the diff unfiltered: if a command-output wrapper is installed, bypass it for the diff.
+Read the diff whole: with RTK installed, run it as `rtk proxy git diff --cached`, since its rewrite
+condenses a diff.
 
 Then read `.claude/docs/code-review-checklist.md`. Its base sections apply where the change can
 reach them, and its **Stack checks** section holds the docs-site checks; report a miss there
@@ -60,6 +61,8 @@ Scope: any `.mdx` file under `content/`.
 ```bash
 git diff --cached --name-only -- '*.mdx'
 ```
+
+With RTK installed, run it as `rtk proxy git diff …`: every file on the list is audited.
 
 For each changed or added MDX file:
 
