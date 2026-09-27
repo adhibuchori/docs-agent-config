@@ -4,6 +4,7 @@
 # be in package.json (docs-agent-config's SETUP.md §5 lists them); list only what this repo ships,
 # since a missing script fails its gate.
 all	@format
+all	bash scripts/check/secrets.sh
 code	bun run type-check
 code	bash scripts/check/double-assertion.sh
 code	node scripts/check/folder-shape.mjs
