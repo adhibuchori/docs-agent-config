@@ -1,0 +1,31 @@
+# Agent-local state — never commit
+.claude/settings.local.json
+.claude/session-logs/
+# Unlock files, .env backups and the audit log (docs/unlock.md); scripts/env/set.sh refuses to
+# run until this line is here.
+.claude/state/
+.serena/
+# SkillSpector reports (scripts/check/skills.sh)
+.skillspector/
+
+# Secrets
+.env
+.env.*
+!.env.*.example
+
+# Build output and local tool state
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+.wrangler/
+
+# The application repository changelog.yaml checks out for docs:generate. It sits inside the
+# workspace only because actions/checkout refuses a path outside it.
+app-source/
+# Which application commit the technical pages were last generated from (changelog.yaml)
+.generation-marker
+
+# Tooling
+.DS_Store
+*.log

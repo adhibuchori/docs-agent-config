@@ -1,0 +1,15 @@
+# Gitleaks configuration.
+#
+# The default ruleset stays on; this file only narrows it where a generic rule misfires on this
+# repository. Keep every exception to one exact value: a broad allowlist (a whole folder, every
+# Markdown file, a key-name pattern) turns the scanner into decoration.
+
+[extend]
+useDefault = true
+
+# scripts/check/hook-probes.sh hands the .env helpers fake secrets to prove they are masked. One is
+# shaped like a JWT, and its payload is {"sub":"probe"}. The value is matched whole, not the file:
+# gitleaks `dir` ignores `condition = "AND"` and skips a listed path outright.
+[[allowlists]]
+description = "Hook-probe JWT fixture"
+regexes = ['''^eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJwcm9iZSJ9\.probeSignatureValue9$''']

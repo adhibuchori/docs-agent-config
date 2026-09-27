@@ -1,0 +1,21 @@
+# Requests reviewers automatically. Without branch protection this is a prompt, not
+# a gate. Later rules win, so the narrow entries below override the catch-all.
+
+*                             @your-github-handle
+
+# Files that decide what reaches production.
+/.github/workflows/           @your-github-handle
+/.github/scripts/             @your-github-handle
+/.gitleaks.toml               @your-github-handle
+/wrangler.jsonc               @your-github-handle
+/wrangler.example.jsonc       @your-github-handle
+
+# Files that decide what the agent may do, and the gates that hold it.
+/.claude/hooks/               @your-github-handle
+/.claude/settings.json        @your-github-handle
+/.mcp.json                    @your-github-handle
+/.husky/                      @your-github-handle
+/scripts/check/               @your-github-handle
+/scripts/ops/                 @your-github-handle
+/scripts/env/                 @your-github-handle
+/.skillspector-baseline.yaml  @your-github-handle

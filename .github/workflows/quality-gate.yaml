@@ -1,0 +1,45 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    # dev is the review gate; prod re-runs it as a safety net on promotion.
+    # The script diffs against origin/<base branch>, so it follows the base.
+    branches: [dev, prod]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    # The job a developer waits on, so the faster runner pool goes first when one is set.
+    runs-on: ${{ vars.CI_RUNNER_FAST || vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: the diff steps compare against the base branch.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # An exact Bun, moved with changelog.yaml and ci-cd.yaml: `latest` is whatever ships that day.
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+
+      # Only the Skill Security Scan uses it, to install the SkillSpector commit skills.sh pins.
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+
+      # CI=true on the runner makes the gate strict: a check that cannot run fails it.
+      - name: Quality Gate
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: .github/scripts/quality-gate.sh "origin/${BASE_REF}"
