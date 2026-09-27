@@ -23,7 +23,8 @@ With RTK installed, run the `git log` and `git diff` lines as `rtk proxy git …
 merge commits from `--oneline` and reshapes `--stat`, and the PR body lists both.
 
 The base is `dev` (CLAUDE.md § Branching). On `dev`, `prod` or the default branch, stop: a PR
-starts from an `internal/{scope}` branch, and a promotion PR into `prod` is `/promote`'s job.
+starts from an `internal/{scope}` branch, and a promotion PR into `prod` is `/promote`'s job. Run
+the gates before drafting (`bash scripts/check/gates.sh`); never open a PR from a red gate.
 
 - **Branch name**: infer scope from branch name (e.g., `internal/getting-started` → scope: `getting-started`)
 - **Commits**: summarize what was done from the log

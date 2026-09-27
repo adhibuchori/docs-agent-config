@@ -55,6 +55,19 @@ Parse each suggestion and extract:
 
 If **no review comments found**, inform the user and exit.
 
+Fetch the review threads too; every inline comment belongs to one, and a thread already resolved
+needs nothing:
+
+```bash
+gh api graphql -F owner={OWNER} -F repo={REPO} -F pr={PR_NUMBER} -f query='
+query($owner: String!, $repo: String!, $pr: Int!) { repository(owner: $owner, name: $repo) {
+  pullRequest(number: $pr) { reviewThreads(first: 100) { nodes {
+    id isResolved path line comments(first: 1) { nodes { databaseId } } } } } } }'
+```
+
+Match each comment to its thread (the thread's first comment `databaseId` is the comment's `id`)
+and skip the resolved ones.
+
 ---
 
 ## Step 3: Validate Against Project Rules
@@ -135,13 +148,23 @@ Output a structured plan following the `/plan` format:
 Once the user approves the plan:
 
 1. Apply fixes one by one, ordered by priority (Critical first).
-2. After all fixes: run `bash scripts/check/gates.sh` — every gate must pass.
-3. Ask: **"All fixes have been applied. Would you like me to post a summary to the GitHub PR as a comment?"**
-   - **Yes** →
+2. After all fixes: run `/check-fix` — every gate must pass.
+3. Reply on each thread, the declined ones included: a declined suggestion gets a reply saying
+   what it proposed and why it does not apply here. Silence reads as "missed it", and the next
+   reviewer raises it again. Post the outcome in each inline comment's own thread (its `id` from
+   Step 2), then summarise on the PR:
 
-     ```bash
-     gh pr comment {PR_NUMBER} --repo {OWNER/REPO} \
-       --body "{markdown summary: fixes applied, rules referenced, quality gate status}"
-     ```
+   ```bash
+   gh api -X POST "repos/{OWNER}/{REPO}/pulls/{PR_NUMBER}/comments/{COMMENT_ID}/replies" \
+     -f body="<applied in <sha>, or declined and why>"
+   gh pr comment {PR_NUMBER} --repo {OWNER/REPO} \
+     --body "<what was applied, what was declined and why, and the gate status>"
+   ```
 
-   - **No** → Done.
+4. Resolve each thread you answered, applied or declined with its reason, so the PR's readiness
+   check and `/merge-pr` can pass; leave a thread open only when you asked the reviewer a question in
+   it:
+
+   ```bash
+   gh api graphql -F id={THREAD_ID} -f query='mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { isResolved } } }'
+   ```

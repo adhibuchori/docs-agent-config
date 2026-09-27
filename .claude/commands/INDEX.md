@@ -8,6 +8,7 @@ In the order work flows: plan, build, review, commit, pull request, release.
 | Plan         | /plan               | Before every content or feature change         | /plan add SDK reference section    |
 | Build        | /rca                | A bug: reproduce it, then fix it               | /rca broken anchor on SDK page     |
 | Build        | /checkpoint         | Before a risky change                          | /checkpoint before nav restructure |
+| Build        | /check-fix          | A gate is red: fix at the cause and re-run     | /check-fix                         |
 | Review       | /review             | Before every commit                            | /review                            |
 | Commit       | /commit             | After the work is done; you commit             | /commit                            |
 | Commit       | /ship               | Review, fix, commit and push the work branch   | /ship                              |
