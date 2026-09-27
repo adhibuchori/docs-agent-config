@@ -157,10 +157,10 @@ through the API.
 
 Two smaller decisions in the same workflow, both deliberate:
 
-- **No `synchronize` in the trigger types.** The action posts no sticky comment, so every push
-  would add another review.
+- **No `synchronize` in the trigger types.** Each review costs tokens; the comment is updated in
+  place, and `/ask-deepseek` asks again after new commits.
 - **Base branch only, not the promotion branch.** A `dev → prod` diff re-adds the entire AI config
-  that the strip pipeline removed, and the provider rejects a diff that size.
+  that the strip pipeline removed, and repeats what was reviewed on the way into `dev`.
 
 ---
 

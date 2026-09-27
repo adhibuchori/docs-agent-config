@@ -525,7 +525,7 @@ Inilah yang masuk ke repositori Anda setelah Mulai cepat. File situs Anda sendir
 
 ```text
 your-docs-site/
-├── CLAUDE.md                    router yang dibaca Claude setiap sesi (115 baris); isi sendiri
+├── CLAUDE.md                    router yang dibaca Claude setiap sesi (118 baris); isi sendiri
 ├── .mcp.json                    server MCP, masing-masing di-pin ke satu rilis; token dari shell Anda
 ├── .gitignore                   milik Anda, plus baris dari lapisan ini: .claude/state/, file .env* asli
 ├── .gitleaks.toml               pengaturan pemindaian secret: aturan bawaan, satu pengecualian persis
@@ -542,14 +542,14 @@ your-docs-site/
 │   ├── agent-config.json        pengaturan hook Anda (generatedPaths); versi .example memuat semuanya
 │   ├── hooks/                   8 hook + lib.sh + README.md (apa yang ditolak masing-masing, dan kenapa)
 │   ├── rules/                   5 rule: 1 selalu dimuat, 4 dimuat menurut path
-│   ├── commands/                14 slash command + INDEX.md, dicerminkan dari _workflow-source/
+│   ├── commands/                15 slash command + INDEX.md, dicerminkan dari _workflow-source/
 │   ├── agents/                  2 subagen reviewer + INDEX.md
 │   ├── anti-patterns/           9 jebakan yang sudah dikenal + INDEX.md berisi kata kunci pemicu
 │   ├── docs/                    checklist review yang dibaca /review
 │   ├── mcp/                     3 template server MCP sesuai kebutuhan
 │   └── *.example.md             4 referensi sesuai kebutuhan, untuk diisi atau dihapus
-├── .agent/workflows/            14 perintah yang sama, untuk tool kedua (hapus jika tidak dipakai)
-├── _workflow-source/            tempat Anda mengedit perintah: 14 sumber + INDEX.md
+├── .agent/workflows/            15 perintah yang sama, untuk tool kedua (hapus jika tidak dipakai)
+├── _workflow-source/            tempat Anda mengedit perintah: 15 sumber + INDEX.md
 ├── scripts/
 │   ├── check/                   gate-gatenya: gates.list, gates.sh, pemeriksaan, probe hook
 │   ├── env/                     show.sh, set.sh, envfile.py: helper .env yang menyamarkan nilai
@@ -590,12 +590,12 @@ menyebutkan hal ini di paragraf keduanya.
 ```mermaid
 flowchart TB
     accTitle: Lapisan yang dibawa template dokumentasi ini
-    accDescr: Lapisan 1, router, adalah CLAUDE.md ditambah satu rule yang selalu dimuat, dibaca setiap sesi. Lapisan 2 dan 3, AGENTS.md dan SSOT.md, digambar putus-putus karena situs dokumentasi sengaja tidak memilikinya. Lapisan 4, mesin, berisi delapan hook, empat rule yang dimuat menurut path, dan empat belas perintah; lapisan ini bekerja di setiap pemanggilan tool. Lapisan 5, gate, adalah daftar gate yang berjalan sebelum setiap commit dan CI pull request.
+    accDescr: Lapisan 1, router, adalah CLAUDE.md ditambah satu rule yang selalu dimuat, dibaca setiap sesi. Lapisan 2 dan 3, AGENTS.md dan SSOT.md, digambar putus-putus karena situs dokumentasi sengaja tidak memilikinya. Lapisan 4, mesin, berisi delapan hook, empat rule yang dimuat menurut path, dan lima belas perintah; lapisan ini bekerja di setiap pemanggilan tool. Lapisan 5, gate, adalah daftar gate yang berjalan sebelum setiap commit dan CI pull request.
 
     L1["1 · Router: CLAUDE.md<br/>plus satu rule yang selalu dimuat<br/>dibaca setiap sesi"]
     L2["2 · Guardrail: AGENTS.md<br/>sengaja tidak ada"]
     L3["3 · Contract: SSOT.md<br/>sengaja tidak ada"]
-    L4["4 · Machine: .claude/<br/>8 hook · 14 perintah<br/>4 rule dimuat menurut path<br/>bekerja di setiap pemanggilan tool"]
+    L4["4 · Machine: .claude/<br/>8 hook · 15 perintah<br/>4 rule dimuat menurut path<br/>bekerja di setiap pemanggilan tool"]
     L5["5 · Gate: scripts/check/<br/>dan .github/<br/>12 pemeriksaan sebelum commit<br/>22 langkah di pull request"]
 
     L1 -.-> L2 -.-> L3 -.-> L4 --> L5
@@ -619,7 +619,7 @@ Apa yang berubah karena ketiadaan itu, dibandingkan template aplikasi:
 
 ## Semua isi template ini
 
-Dihitung dengan `git ls-files`: **154 file. Tanpa `AGENTS.md`, tanpa `SSOT.md`, tanpa kode aplikasi.**
+Dihitung dengan `git ls-files`: **158 file. Tanpa `AGENTS.md`, tanpa `SSOT.md`, tanpa kode aplikasi.**
 Setiap tabel menjawab tiga pertanyaan untuk setiap bagian: apa fungsinya, bagaimana memakainya, dan
 kenapa itu membantu. Setiap nama menaut ke file-nya atau ke halaman yang menjelaskannya.
 
@@ -662,7 +662,7 @@ echo '{"tool_name":"mcp__db-prod__execute_sql","tool_input":{"sql":"SELECT 1"}}'
 
 ### Perintah
 
-Empat belas slash command, sesuai urutan alur kerja. Anda mengeditnya sekali di
+Lima belas slash command, sesuai urutan alur kerja. Anda mengeditnya sekali di
 [`_workflow-source/`](_workflow-source/INDEX.md) lalu menjalankan
 `bash scripts/sync/workflows.sh`, yang mencerminkannya ke `.claude/commands/` dan
 `.agent/workflows/`.
@@ -673,6 +673,7 @@ Empat belas slash command, sesuai urutan alur kerja. Anda mengeditnya sekali di
 | [`/rca`](_workflow-source/rca.md) | Mereproduksi bug lebih dulu, menemukan baris penyebabnya, dan memperbaikinya dengan tes yang gagal tanpa perbaikan itu; tidak melakukan commit | `/rca broken anchor on SDK page`, atau `/debug …` | Tidak ada perbaikan asal tebak, dan buktinya tetap ada |
 | [`/checkpoint`](_workflow-source/checkpoint.md) | Commit pengaman lokal untuk file sesi ini, per pathspec; tidak pernah push | `/checkpoint before nav restructure` | Perubahan berisiko bisa dibatalkan dalam satu langkah |
 | [`/review`](_workflow-source/review.md) | Me-review perubahan yang di-stage: kualitas konten, tautan rusak, build, aksesibilitas, dan struktur; menawarkan untuk menerapkan perbaikannya | `/review` | Tautan rusak dan build yang gagal ketahuan sebelum commit |
+| [`/check-fix`](_workflow-source/check-fix.md) | Menulis format, menjalankan setiap gate di `gates.list` dan build-nya, lalu memperbaiki yang gagal di akar penyebabnya sampai semuanya lolos; tidak melakukan commit | `/check-fix` | Gate yang merah diperbaiki sekarang, bukan baru ketahuan saat commit |
 | [`/commit`](_workflow-source/commit.md) | Menjalankan gate, memeriksa perubahan yang di-stage, dan menyusun draf pesan commit; Anda yang melakukan commit | `/commit` | Setiap pesan commit mengikuti satu format, setelah gate hijau |
 | [`/ship`](_workflow-source/ship.md) | Men-stage semuanya, menjalankan `/review` dan `/security-review`, memperbaiki temuannya, menjalankan ulang gate, lalu commit dan push branch kerja; menolak berjalan di `dev` dan `prod` | `/ship` | Dari selesai ditulis sampai ter-push dalam sekali jalan, tanpa temuan yang terlewat |
 | [`/create-pr`](_workflow-source/create-pr.md) | Menyusun judul dan deskripsi pull request, lalu membukanya ke `dev` setelah Anda setuju | `/create-pr` | Setiap pull request punya bentuk yang sama dan deskripsi yang sungguhan |
@@ -762,7 +763,7 @@ file yang di-stage; CI menjalankan pemeriksaan yang sama dan lebih banyak lagi d
 | [`quality-gate.sh`](.github/scripts/quality-gate.sh) | Menjalankan 22 langkah CI, di runner atau di mesin Anda | `bash .github/scripts/quality-gate.sh origin/dev` | Gate CI tetap bisa berjalan saat CI tidak bisa |
 | [`check-comment-style.ts`](.github/scripts/check-comment-style.ts) | Mengkhususkan komentar `//` untuk direktif saja | `bun run .github/scripts/check-comment-style.ts` (sebuah gate) | Satu gaya komentar di semua skrip |
 | [`check-comment-blocks.sh`](.github/scripts/check-comment-blocks.sh) | Membatasi blok komentar di bawah `.github/` maksimal dua baris | `bash .github/scripts/check-comment-blocks.sh` (sebuah gate) | Penjelasan panjang pindah ke `docs/RATIONALE.md`, tempat penjelasan itu dibaca |
-| [`strip-paths.sh`](.github/scripts/strip-paths.sh), [`strip-ai.sh`](.github/scripts/strip-ai.sh), [`verify-strip.sh`](.github/scripts/verify-strip.sh), [`back-merge-prod.sh`](.github/scripts/back-merge-prod.sh) | Strip produksi: satu daftar file agen, dihapus dari `prod`, diverifikasi di kedua branch, lalu di-merge balik ke `dev` | Dijalankan oleh `strip-ai-on-pr.yml` dan `/promote-deploy`; pasang paling akhir ([SETUP §9](SETUP.md#9-the-ai-config-strip-pipeline--last-and-only-if-you-want-it)) | `prod` tidak membawa konfigurasi agen, dan `dev` tetap menyimpannya |
+| [`strip-paths.sh`](.github/scripts/strip-paths.sh), [`strip-ai.sh`](.github/scripts/strip-ai.sh), [`verify-strip.sh`](.github/scripts/verify-strip.sh), [`back-merge-prod.sh`](.github/scripts/back-merge-prod.sh) | Strip produksi: satu daftar file agen, dihapus dari `prod`, diverifikasi di kedua branch, lalu di-merge balik ke `dev` | Dijalankan oleh `/promote-deploy`; `strip-ai-on-pr.yml` menghapus daftar yang sama di CI; pasang paling akhir ([SETUP §9](SETUP.md#9-the-ai-config-strip-pipeline--last-and-only-if-you-want-it)) | `prod` tidak membawa konfigurasi agen, dan `dev` tetap menyimpannya |
 
 Sebuah commit hanya menjalankan baris yang dibutuhkan file yang di-stage:
 
@@ -813,17 +814,19 @@ pernah diloloskan diam-diam; di runner, pemeriksaan yang di-skip menggagalkan ga
 Sembilan workflow, semuanya dipicu event pull request. Tidak ada yang berjalan saat push, terjadwal,
 atau dipicu manual. Semuanya menunggu branch `dev` dan `prod`, yang tidak dimiliki repositori ini,
 jadi workflow-nya belum aktif sampai Anda membuat kedua branch itu
-([SETUP §8](SETUP.md#8-github-repository-settings)).
+([SETUP §8](SETUP.md#8-github-repository-settings)). Workflow review dan strip hanyalah pemanggil
+pendek bagi reusable workflow milik agent-config-kit, di-pin ke commit rilis v1.2.0-nya, sehingga
+logikanya di-review sekali dan diperbarui dengan mengganti satu SHA.
 
 | Nama | Apa fungsinya | Cara memakai | Kenapa membantu |
 | :-- | :-- | :-- | :-- |
 | [`quality-gate.yaml`](.github/workflows/quality-gate.yaml) | Menjalankan 22 langkah `quality-gate.sh` | Dipicu pull request ke `dev` atau `prod` | Tidak ada yang ter-merge melewati pemeriksaan yang gagal atau di-skip |
 | [`react-doctor.yml`](.github/workflows/react-doctor.yml) | Memberi skor kode React, berkomentar di baris yang berubah, dan memasang ringkasan | Dipicu pull request ke `dev` atau `prod` | Kesalahan React di `app/` dan `components/` muncul saat review |
-| [`deepseek-review.yml`](.github/workflows/deepseek-review.yml) | Memasang review kode AI atas diff-nya; tidak pernah men-checkout pull request | Dipicu pull request ke `dev`, atau komentar `/ask-deepseek` dari orang dengan akses tulis; butuh `DEEPSEEK_CODE_REVIEW_TOKEN` | Pembaca kedua di setiap pull request |
+| [`deepseek-review.yml`](.github/workflows/deepseek-review.yml) | Memasang review DeepSeek atas diff-nya sebagai satu komentar, diperbarui di setiap run, lewat reusable workflow `deepseek-review`; tidak pernah men-checkout pull request | Dipicu pull request ke `dev`, atau komentar `/ask-deepseek` dari orang dengan akses tulis; butuh `DEEPSEEK_API_KEY` | Pembaca kedua di setiap pull request |
 | [`dependency-review.yml`](.github/workflows/dependency-review.yml) | Menggagalkan pull request yang menambah atau menaikkan versi dependency dengan kerentanan tingkat high atau critical yang sudah diketahui, runtime maupun development | Dipicu setiap pull request; di repo privat, baru berjalan setelah `CODE_SECURITY` bernilai `true` | Paket yang rentan dihentikan di pintu masuk |
 | [`codeql.yml`](.github/workflows/codeql.yml) | Pemindaian kode CodeQL untuk bahasa yang ditemukannya | Dipicu setiap pull request; aturan repo privat yang sama | Bug keamanan di kode ditandai saat review |
 | [`workflows-lint.yml`](.github/workflows/workflows-lint.yml) | Menjalankan actionlint (dengan ShellCheck), zizmor, dan `pinact --check` | Dipicu pull request yang mengubah `.github/` | Bug workflow atau action yang belum di-pin ketahuan sebelum merge |
-| [`strip-ai-on-pr.yml`](.github/workflows/strip-ai-on-pr.yml) | Menghapus lapisan agen dari `prod`, me-merge `prod` balik ke `dev`, dan memverifikasi keduanya | Dipicu saat pull request ke `prod` di-merge | Produksi tidak membawa konfigurasi agen |
+| [`strip-ai-on-pr.yml`](.github/workflows/strip-ai-on-pr.yml) | Menghapus lapisan agen dari `prod`, me-merge `prod` balik ke `dev`, dan memverifikasi keduanya, lewat reusable workflow `strip-ai` (daftarnya ditambah `promote-deploy-logs`, sama dengan daftar di `strip-paths.sh`) | Dipicu saat pull request ke `prod` di-merge | Produksi tidak membawa konfigurasi agen |
 | [`changelog.yaml`](.github/workflows/changelog.yaml) | Membuat ulang changelog dan halaman teknis dari repo aplikasi, meng-commit-nya ke `prod` dan `dev`, lalu memanggil deploy | Dipicu saat pull request ke `prod` di-merge, atau oleh dispatch `app-deployed` dari repo aplikasi | Dokumentasi mengikuti setiap rilis aplikasi tanpa langkah manual |
 | [`ci-cd.yaml`](.github/workflows/ci-cd.yaml) | Membangun situs statis dan men-deploy-nya ke Cloudflare Workers dengan Wrangler yang di-pin | Dipanggil oleh `changelog.yaml` (`workflow_call`) | Satu jalur deploy, satu antrean, tanpa deploy paralel |
 
@@ -978,7 +981,8 @@ diketahui, dijelaskan di [`docs/unlock.md`](docs/unlock.md):
   membuka pull request pembaruan. Setiap menit yang ditagih milik sebuah pull request
   ([RATIONALE §19](docs/RATIONALE.md#19-ci-starts-only-from-pull-request-events)).
 - **Setiap action di-pin ke SHA commit lengkap** dengan versinya di komentar (satu-satunya container
-  image di-pin ke digest-nya), dan Bun serta Wrangler ke rilis yang persis. `workflows-lint.yml`
+  image di-pin ke digest-nya), dan Bun serta Wrangler ke rilis yang persis. Reusable workflow milik
+  agent-config-kit di-pin dengan cara yang sama, ke commit rilis v1.2.0-nya. `workflows-lint.yml`
   menjalankan `pinact run --check` di setiap perubahan pada `.github/`.
 - **Hak akses seminimal mungkin.** Setiap workflow dimulai dengan `contents: read`; job yang butuh
   lebih meminta izinnya secara eksplisit, dengan komentar yang menjelaskan alasannya. Hanya dua job,
@@ -990,6 +994,32 @@ diketahui, dijelaskan di [`docs/unlock.md`](docs/unlock.md):
 - **Mengaktifkannya** berarti membuat `dev` dan `prod`; [SETUP §8](SETUP.md#8-github-repository-settings)
   mencantumkan secret, variabel, dan pengaturan secara berurutan, serta apa yang gratis di repositori
   publik maupun privat.
+
+**Job mana berjalan di mana.** Setiap `runs-on:` membaca variabel repositori, jadi memindahkan pool
+cukup dengan mengubah variabel, bukan commit. Tempatkan job menurut siapa yang menunggu hasilnya,
+bukan menurut seberapa berat kelihatannya. Gate yang memblokir merge adalah satu-satunya job yang
+tidak boleh mati atau macet, jadi `quality-gate.yaml` membaca `CI_RUNNER_FAST` lebih dulu, begitu
+pula build situs di `ci-cd.yaml`, build yang dirilis. Semua yang boleh gagal tanpa memblokir siapa
+pun (React Doctor, review AI, pemindaian, lint workflow, changelog dan strip setelah merge) berjalan
+di `CI_RUNNER`, tempat menit paling murah. GitHub membulatkan setiap job ke atas menjadi satu menit
+penuh, jadi runner yang lebih cepat tidak menghemat apa pun untuk job yang sudah selesai di bawah
+satu menit. Penyedia mana pun bisa dipakai: workflow hanya membaca labelnya.
+
+**Memakai dua pool gratis.** Di repositori publik, runner yang di-host GitHub gratis tanpa batas
+menit: biarkan kedua variabel kosong. Repositori privat di paket Free mendapat 2.000 menit sebulan,
+dan pool pihak ketiga seperti Blacksmith menambah menit gratisnya sendiri (3.000 sebulan). Pakai
+keduanya: pasang GitHub app milik penyedia itu, lalu arahkan job cepat ke labelnya dan biarkan
+`CI_RUNNER` kosong, supaya job lain memakai menit GitHub.
+
+```bash
+gh variable set CI_RUNNER_FAST --body blacksmith-2vcpu-ubuntu-2404   # job cepat di pool kedua
+gh variable set CI_RUNNER --body blacksmith-2vcpu-ubuntu-2404        # hanya saat menit GitHub habis
+gh variable delete CI_RUNNER                                         # saat bulan berganti
+```
+
+Kuota bisa berubah, jadi periksa kedua halaman harga sebelum mengandalkannya.
+[`.claude/CI-RUNNERS.example.md`](.claude/CI-RUNNERS.example.md) berisi uji anggaran yang perlu
+dijalankan sebelum memindahkan job, dan jalan keluar bila sebuah pool hilang.
 
 ---
 
@@ -1068,8 +1098,8 @@ sampai 39 selama gate berjalan), jadi anggap angka waktunya sebagai batas atas:
 
 | Apa | Biaya |
 | :-- | :-- |
-| Konteks yang selalu dimuat: `CLAUDE.md` (7.281 byte) + `working-agreements.md` (4.278 byte) | **11.559 byte** dari batas 15.000 byte yang ditegakkan `ai-config.sh` |
-| Deskripsi perintah dan subagen yang ditampilkan Claude Code | 3.177 byte untuk keenam belasnya |
+| Konteks yang selalu dimuat: `CLAUDE.md` (7.555 byte) + `working-agreements.md` (4.556 byte) | **12.111 byte** dari batas 15.000 byte yang ditegakkan `ai-config.sh` |
+| Deskripsi perintah dan subagen yang ditampilkan Claude Code | 3.287 byte untuk ketujuh belasnya |
 | `safety-check.sh` untuk satu perintah | sekitar 0,23 dtk (198 sampai 202 ms sebelum aturan skrip guard, yang menambah sekitar 17%; versi lama dan baru dijalankan berdampingan) |
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | masing-masing 0,11 sampai 0,14 dtk |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | masing-masing 0,08 sampai 0,10 dtk |
@@ -1077,6 +1107,8 @@ sampai 39 selama gate berjalan), jadi anggap angka waktunya sebagai batas atas:
 | `/bin/bash scripts/check/hook-probes.sh` | 8 mnt 9 dtk untuk 2.365 probe |
 | Commit yang men-stage file hook, atau `bash scripts/check/gates.sh` | probe hook di atas, ditambah sekitar 2 dtk untuk 12 gate lainnya |
 | CI | hanya di pull request: tidak ada saat push, tidak ada yang terjadwal |
+| Menit CI | gratis dan tanpa batas di repositori publik; 2.000 sebulan di paket Free GitHub untuk repositori privat. Setiap job dibulatkan ke atas menjadi satu menit penuh, jadi hanya gate dan build situs yang layak mendapat pool cepat |
+| Pool gratis kedua | runner pihak ketiga seperti Blacksmith menambah menit gratisnya sendiri (3.000 sebulan) lewat `CI_RUNNER_FAST` dan `CI_RUNNER` ([CI: hanya pull request](#ci-hanya-pull-request)) |
 
 `post-edit.sh` menambah waktu yang dipakai formatter dan linter Anda sendiri pada file itu (timeout
 60 dtk).

@@ -508,7 +508,7 @@ What lands in your repository after the Quick start. Your own site files (`conte
 
 ```text
 your-docs-site/
-├── CLAUDE.md                    the router Claude reads every session (115 lines); fill it in
+├── CLAUDE.md                    the router Claude reads every session (118 lines); fill it in
 ├── .mcp.json                    MCP servers, each pinned to a release; tokens come from your shell
 ├── .gitignore                   yours, plus the layer's lines: .claude/state/, real .env* files
 ├── .gitleaks.toml               secret-scan settings: the default rules, one exact exception
@@ -525,14 +525,14 @@ your-docs-site/
 │   ├── agent-config.json        your hook settings (generatedPaths); the .example lists them all
 │   ├── hooks/                   8 hooks + lib.sh + README.md (what each refuses and why)
 │   ├── rules/                   5 rules: 1 always loaded, 4 loaded by path
-│   ├── commands/                14 slash commands + INDEX.md, mirrored from _workflow-source/
+│   ├── commands/                15 slash commands + INDEX.md, mirrored from _workflow-source/
 │   ├── agents/                  2 review subagents + INDEX.md
 │   ├── anti-patterns/           9 known traps + INDEX.md with trigger keywords
 │   ├── docs/                    the review checklist /review reads
 │   ├── mcp/                     3 on-demand MCP server templates
 │   └── *.example.md             4 on-demand references to fill in or delete
-├── .agent/workflows/            the same 14 commands, for a second tool (delete if unused)
-├── _workflow-source/            where you edit the commands: 14 sources + INDEX.md
+├── .agent/workflows/            the same 15 commands, for a second tool (delete if unused)
+├── _workflow-source/            where you edit the commands: 15 sources + INDEX.md
 ├── scripts/
 │   ├── check/                   the gates: gates.list, gates.sh, the checks, the hook probes
 │   ├── env/                     show.sh, set.sh, envfile.py: the masked .env helpers
@@ -571,12 +571,12 @@ product for `SSOT.md` to describe. `CLAUDE.md` says so in its second paragraph.
 ```mermaid
 flowchart TB
     accTitle: The layers this docs template ships
-    accDescr: Layer 1, the router, is CLAUDE.md plus one always-loaded rule, read every session. Layers 2 and 3, AGENTS.md and SSOT.md, are drawn dashed because a docs site omits them by design. Layer 4, the machine, holds eight hooks, four path-scoped rules and fourteen commands; it acts on every tool call. Layer 5, the gate, is the gate list run before each commit and the pull-request CI.
+    accDescr: Layer 1, the router, is CLAUDE.md plus one always-loaded rule, read every session. Layers 2 and 3, AGENTS.md and SSOT.md, are drawn dashed because a docs site omits them by design. Layer 4, the machine, holds eight hooks, four path-scoped rules and fifteen commands; it acts on every tool call. Layer 5, the gate, is the gate list run before each commit and the pull-request CI.
 
     L1["1 · Router: CLAUDE.md<br/>plus one always-loaded rule<br/>read every session"]
     L2["2 · Guardrail: AGENTS.md<br/>absent by design"]
     L3["3 · Contract: SSOT.md<br/>absent by design"]
-    L4["4 · Machine: .claude/<br/>8 hooks · 14 commands<br/>4 rules loaded by path<br/>acts on every tool call"]
+    L4["4 · Machine: .claude/<br/>8 hooks · 15 commands<br/>4 rules loaded by path<br/>acts on every tool call"]
     L5["5 · Gate: scripts/check/<br/>and .github/<br/>12 checks before a commit<br/>22 steps on a pull request"]
 
     L1 -.-> L2 -.-> L3 -.-> L4 --> L5
@@ -600,7 +600,7 @@ What the absences change, compared with the application templates:
 
 ## Everything this template ships
 
-Counted with `git ls-files`: **154 files. No `AGENTS.md`, no `SSOT.md`, no application source.**
+Counted with `git ls-files`: **158 files. No `AGENTS.md`, no `SSOT.md`, no application source.**
 Each table answers three questions for every piece: what it does, how you use it, and why it helps.
 Each name links to the file or to the page that explains it.
 
@@ -642,7 +642,7 @@ echo '{"tool_name":"mcp__db-prod__execute_sql","tool_input":{"sql":"SELECT 1"}}'
 
 ### Commands
 
-Fourteen slash commands, in the order work flows. You edit them once in
+Fifteen slash commands, in the order work flows. You edit them once in
 [`_workflow-source/`](_workflow-source/INDEX.md) and run `bash scripts/sync/workflows.sh`, which
 mirrors them into `.claude/commands/` and `.agent/workflows/`.
 
@@ -652,6 +652,7 @@ mirrors them into `.claude/commands/` and `.agent/workflows/`.
 | [`/rca`](_workflow-source/rca.md) | Reproduces a bug first, finds the line that causes it, and fixes it with a test that fails without the fix; commits nothing | `/rca broken anchor on SDK page`, or `/debug …` | No fix by guesswork, and the proof stays |
 | [`/checkpoint`](_workflow-source/checkpoint.md) | A local safety commit of this session's files, by pathspec; never pushes | `/checkpoint before nav restructure` | A risky change can be undone in one step |
 | [`/review`](_workflow-source/review.md) | Reviews the staged changes for content quality, broken links, the build, accessibility and structure; offers to apply the fixes | `/review` | Broken links and a failing build are caught before the commit |
+| [`/check-fix`](_workflow-source/check-fix.md) | Writes the format, runs every gate in `gates.list` and the build, and fixes what fails at its cause until all pass; commits nothing | `/check-fix` | A red gate is fixed now, not discovered at commit time |
 | [`/commit`](_workflow-source/commit.md) | Runs the gates, inspects the staged changes and drafts a commit message; you commit | `/commit` | Every commit message follows one format, after a green gate |
 | [`/ship`](_workflow-source/ship.md) | Stages everything, runs `/review` and `/security-review`, fixes the findings, re-runs the gates, commits and pushes the work branch; refuses on `dev` and `prod` | `/ship` | From written to pushed in one pass, with no finding skipped |
 | [`/create-pr`](_workflow-source/create-pr.md) | Drafts the pull request title and description and opens it into `dev` once you confirm | `/create-pr` | Every pull request has the same shape and a real description |
@@ -738,7 +739,7 @@ checks and more in 22 steps.
 | [`quality-gate.sh`](.github/scripts/quality-gate.sh) | Runs the 22 CI steps, on a runner or on your machine | `bash .github/scripts/quality-gate.sh origin/dev` | The CI gate still runs when CI cannot |
 | [`check-comment-style.ts`](.github/scripts/check-comment-style.ts) | Keeps `//` comments for directives only | `bun run .github/scripts/check-comment-style.ts` (a gate) | One comment style across every script |
 | [`check-comment-blocks.sh`](.github/scripts/check-comment-blocks.sh) | Caps comment runs under `.github/` at two lines | `bash .github/scripts/check-comment-blocks.sh` (a gate) | Long explanations go to `docs/RATIONALE.md`, where they are read |
-| [`strip-paths.sh`](.github/scripts/strip-paths.sh), [`strip-ai.sh`](.github/scripts/strip-ai.sh), [`verify-strip.sh`](.github/scripts/verify-strip.sh), [`back-merge-prod.sh`](.github/scripts/back-merge-prod.sh) | The production strip: one list of agent files, removed from `prod`, verified on both branches, merged back into `dev` | Run by `strip-ai-on-pr.yml` and `/promote-deploy`; adopt it last ([SETUP §9](SETUP.md#9-the-ai-config-strip-pipeline--last-and-only-if-you-want-it)) | `prod` carries no agent config, and `dev` keeps it |
+| [`strip-paths.sh`](.github/scripts/strip-paths.sh), [`strip-ai.sh`](.github/scripts/strip-ai.sh), [`verify-strip.sh`](.github/scripts/verify-strip.sh), [`back-merge-prod.sh`](.github/scripts/back-merge-prod.sh) | The production strip: one list of agent files, removed from `prod`, verified on both branches, merged back into `dev` | Run by `/promote-deploy`; `strip-ai-on-pr.yml` strips the same list in CI; adopt it last ([SETUP §9](SETUP.md#9-the-ai-config-strip-pipeline--last-and-only-if-you-want-it)) | `prod` carries no agent config, and `dev` keeps it |
 
 A commit runs only the lines its staged files need:
 
@@ -788,17 +789,19 @@ on a runner, a skipped check fails the gate.
 
 Nine workflows, all started by pull-request events. None runs on a push, on a timer or by hand. They
 wait for the `dev` and `prod` branches, which this repository does not have, so they are disarmed
-until you create them ([SETUP §8](SETUP.md#8-github-repository-settings)).
+until you create them ([SETUP §8](SETUP.md#8-github-repository-settings)). The review and strip
+workflows are short callers of agent-config-kit's reusable workflows, pinned to the commit of its
+v1.2.0 release, so their logic is reviewed once and updated by changing one SHA.
 
 | Name | What it does | How to use | Why it helps |
 | :-- | :-- | :-- | :-- |
 | [`quality-gate.yaml`](.github/workflows/quality-gate.yaml) | Runs the 22 steps of `quality-gate.sh` | Starts on a pull request into `dev` or `prod` | Nothing merges past a failing or skipped check |
 | [`react-doctor.yml`](.github/workflows/react-doctor.yml) | Scores the React code, comments on the changed lines, and posts a summary | Starts on a pull request into `dev` or `prod` | React mistakes in `app/` and `components/` show up in review |
-| [`deepseek-review.yml`](.github/workflows/deepseek-review.yml) | Posts an AI code review of the diff; never checks out the pull request | Starts on a pull request into `dev`, or a `/ask-deepseek` comment from someone with write access; needs `DEEPSEEK_CODE_REVIEW_TOKEN` | A second reader on every pull request |
+| [`deepseek-review.yml`](.github/workflows/deepseek-review.yml) | Posts a DeepSeek review of the diff as one comment, updated on each run, through the reusable `deepseek-review` workflow; never checks out the pull request | Starts on a pull request into `dev`, or a `/ask-deepseek` comment from someone with write access; needs `DEEPSEEK_API_KEY` | A second reader on every pull request |
 | [`dependency-review.yml`](.github/workflows/dependency-review.yml) | Fails a pull request that adds or bumps a dependency with a known high or critical vulnerability, runtime or development | Starts on every pull request; on a private repo, only once `CODE_SECURITY` is `true` | A vulnerable package is stopped at the door |
 | [`codeql.yml`](.github/workflows/codeql.yml) | CodeQL code scanning of the languages it finds | Starts on every pull request; same private-repo rule | Security bugs in code are flagged in review |
 | [`workflows-lint.yml`](.github/workflows/workflows-lint.yml) | Runs actionlint (with ShellCheck), zizmor and `pinact --check` | Starts on a pull request that changes `.github/` | A workflow bug or an unpinned action is caught before merge |
-| [`strip-ai-on-pr.yml`](.github/workflows/strip-ai-on-pr.yml) | Removes the agent layer from `prod`, merges `prod` back into `dev`, verifies both | Starts when a pull request into `prod` is merged | Production carries no agent config |
+| [`strip-ai-on-pr.yml`](.github/workflows/strip-ai-on-pr.yml) | Removes the agent layer from `prod`, merges `prod` back into `dev`, verifies both, through the reusable `strip-ai` workflow (its list plus `promote-deploy-logs`, the same list as `strip-paths.sh`) | Starts when a pull request into `prod` is merged | Production carries no agent config |
 | [`changelog.yaml`](.github/workflows/changelog.yaml) | Regenerates the changelog and the technical pages from the application repo, commits them to `prod` and `dev`, then calls the deploy | Starts when a pull request into `prod` is merged, or on the application repo's `app-deployed` dispatch | Docs follow every application release without a manual step |
 | [`ci-cd.yaml`](.github/workflows/ci-cd.yaml) | Builds the static site and deploys it to Cloudflare Workers with a pinned Wrangler | Called by `changelog.yaml` (`workflow_call`) | One deploy path, one queue, no parallel deploys |
 
@@ -945,7 +948,8 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
 - **Nothing runs on a push, on a timer or by hand**, and no bot opens update pull requests. Every
   billed minute belongs to a pull request ([RATIONALE §19](docs/RATIONALE.md#19-ci-starts-only-from-pull-request-events)).
 - **Every action is pinned to a full commit SHA** with its version in a comment (the one container
-  image to its digest), and Bun and Wrangler to exact releases. `workflows-lint.yml` runs
+  image to its digest), and Bun and Wrangler to exact releases. agent-config-kit's reusable
+  workflows are pinned the same way, to the commit of its v1.2.0 release. `workflows-lint.yml` runs
   `pinact run --check` on every change to `.github/`.
 - **Least privilege.** Every workflow starts with `contents: read`; a job that needs more asks for
   it by name, with a comment saying why. Only two jobs, the changelog commit and the strip, may
@@ -957,6 +961,31 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
 - **Turning it on** means creating `dev` and `prod`; [SETUP §8](SETUP.md#8-github-repository-settings)
   lists the secrets, variables and settings in order, and what is free on a public or a private
   repository.
+
+**Which job runs where.** Every `runs-on:` reads a repository variable, so moving a pool is a
+variable change, not a commit. Place a job by who waits for its result, not by how heavy it looks.
+The merge-blocking gate is the one job that must not die or stall, so `quality-gate.yaml` reads
+`CI_RUNNER_FAST` first, and so does the site build in `ci-cd.yaml`, the build that ships.
+Everything that can fail without blocking anyone (React Doctor, the AI review, the scans, the
+workflow lint, the changelog and the strip after a merge) runs on `CI_RUNNER`, where minutes are
+cheapest. GitHub rounds each job up to a whole minute, so a faster runner saves nothing on a job
+that already finishes inside one. Any provider works: the workflows read only the labels.
+
+**Spending two free pools.** On a public repository GitHub-hosted runners are free with no minute
+limit: leave both variables unset. A private repository on the Free plan gets 2,000 minutes a month,
+and a third-party pool such as Blacksmith adds its own free minutes (3,000 a month). Spend both:
+install the provider's GitHub app, then put the fast jobs on its label and leave `CI_RUNNER` unset,
+so the other jobs spend GitHub's minutes.
+
+```bash
+gh variable set CI_RUNNER_FAST --body blacksmith-2vcpu-ubuntu-2404   # the fast jobs on the second pool
+gh variable set CI_RUNNER --body blacksmith-2vcpu-ubuntu-2404        # only once GitHub's minutes run out
+gh variable delete CI_RUNNER                                         # when the month resets
+```
+
+Quotas change, so check both price pages before you rely on them.
+[`.claude/CI-RUNNERS.example.md`](.claude/CI-RUNNERS.example.md) has the budget test to run before
+you move jobs, and the escape hatch for a pool that goes away.
 
 ---
 
@@ -1029,8 +1058,8 @@ times as upper bounds:
 
 | What | Cost |
 | :-- | :-- |
-| Always-loaded context: `CLAUDE.md` (7,281 bytes) + `working-agreements.md` (4,278 bytes) | **11,559 bytes** of the 15,000-byte budget `ai-config.sh` enforces |
-| Command and subagent descriptions Claude Code lists | 3,177 bytes for all sixteen |
+| Always-loaded context: `CLAUDE.md` (7,555 bytes) + `working-agreements.md` (4,556 bytes) | **12,111 bytes** of the 15,000-byte budget `ai-config.sh` enforces |
+| Command and subagent descriptions Claude Code lists | 3,287 bytes for all seventeen |
 | `safety-check.sh` on one command | about 0.23 s (198 to 202 ms before the guard-script rules, which add about 17%; old and new run side by side) |
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | 0.11 to 0.14 s each |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | 0.08 to 0.10 s each |
@@ -1038,6 +1067,8 @@ times as upper bounds:
 | `/bin/bash scripts/check/hook-probes.sh` | 8 min 9 s for 2,365 probes |
 | A commit that stages a hook file, or `bash scripts/check/gates.sh` | the hook probes above, plus about 2 s for the other 12 gates |
 | CI | only on pull requests: nothing on a push, nothing on a schedule |
+| CI minutes | free and unmetered on a public repository; 2,000 a month on GitHub's Free plan for a private one. Each job is rounded up to a whole minute, so only the gate and the site build earn the fast pool |
+| A second free pool | a third-party runner such as Blacksmith adds its own free minutes (3,000 a month) through `CI_RUNNER_FAST` and `CI_RUNNER` ([CI: pull requests only](#ci-pull-requests-only)) |
 
 `post-edit.sh` adds the time your own formatter and linter take on the file (60 s timeout).
 

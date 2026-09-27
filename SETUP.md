@@ -97,7 +97,7 @@ The ones to fill are in these files:
 | `.claude/mcp/*.example.json` | Only for an on-demand server you use: copy, fill and pin it (§3). Otherwise delete them |
 | `.github/CODEOWNERS` | `@your-github-handle`, and drop rows for files you do not have |
 | `.github/workflows/changelog.yaml` | `<github-org>/<app-repo>`, once, in its `env:` block (§6) |
-| `.github/workflows/deepseek-review.yml` | Its `sys-prompt` describes a Nextra site with no backend: correct the stack, the places your app code lives and the project rules it lists, or the reviewer reports findings against files you do not have |
+| `.github/workflows/deepseek-review.yml` | Its `instructions` describe a Nextra site with no backend: correct the stack, the places your app code lives and the project rules it lists, or the reviewer reports findings against files you do not have |
 | `_workflow-source/promote.md` · `promote-deploy.md` | § This repo's deploy target: the platform, the Worker's name, the live URL, and the adapter's `read-env`, `latest`, `trigger` and `backup` commands. Then run `bash scripts/sync/workflows.sh` to update the mirrors (§7) |
 | `wrangler.example.jsonc` | Copy to `wrangler.jsonc`; the Worker name, the creation date and the hostname (§8, Cloudflare deploy) |
 | `.env.development.example` · `.env.production.example` | Nothing, unless your site or generators read more keys: add each one with a placeholder value, never a real one (§5) |
@@ -257,11 +257,13 @@ choice is yours alone. The `.gitignore` here already excludes the local file.
 
 ### AI code review on pull requests — DeepSeek
 
-`.github/workflows/deepseek-review.yml` posts an AI review comment on pull requests into `dev`,
-using [`hustcer/deepseek-review`](https://github.com/hustcer/deepseek-review) — which accepts any
-OpenAI-compatible endpoint, so the provider is your choice despite the name. Setup is one secret
-(§8). It runs on `pull_request`, for a pull request opened from a branch of this repository, and on
-an `issue_comment` of `/ask-deepseek` from someone with write access, re-reviewing on demand:
+`.github/workflows/deepseek-review.yml` posts a DeepSeek review of each pull request into `dev` as
+one comment, updated on later runs, through agent-config-kit's reusable `deepseek-review` workflow,
+pinned to one commit. Setup is one secret, `DEEPSEEK_API_KEY` (§8); without it the job passes and
+sends nothing. The diff is capped at 100 KB and the answer at 16,384 tokens, so a review costs a cent
+or two, at most about ten US cents. It runs on `pull_request`, for a pull request opened from a
+branch of this repository, and on an `issue_comment` of `/ask-deepseek` from an owner, member or
+collaborator, re-reviewing on demand:
 
 | Event | Workflow file from | The review secret | This workflow |
 | :-- | :-- | :-- | :-- |
@@ -270,7 +272,8 @@ an `issue_comment` of `/ask-deepseek` from someone with write access, re-reviewi
 | `issue_comment` on a pull request | the default branch | available | reviews, only for `/ask-deepseek` from an owner, member or collaborator |
 
 The comment path runs with the secret even on a fork's pull request, so the workflow **must never
-check out the pull request's code**: the action reads the diff through the API. Nothing here needs
+check out the pull request's code**: the reusable workflow reads the diff through the API, and it
+skips a fork's pull request on every event. Nothing here needs
 `pull_request_target`, which GitHub's default policy turns off in public repositories from
 2 November 2026 (`docs/RATIONALE.md` §5).
 
@@ -699,7 +702,7 @@ In **Settings → Secrets and variables → Actions → New repository secret**:
 | `CLOUDFLARE_API_TOKEN` | the deploy in `ci-cd.yaml` | See [Step 4](#step-4--cloudflare-deploy) |
 | `CLOUDFLARE_ACCOUNT_ID` | the deploy in `ci-cd.yaml` | Cloudflare dashboard → **Workers & Pages** → right sidebar. Not secret, but the action expects it here |
 | `APP_REPO_TOKEN` | `changelog.yaml` | See [Step 5](#step-5--cross-repository-token) |
-| `DEEPSEEK_CODE_REVIEW_TOKEN` | `deepseek-review.yml` | See [Step 6](#step-6--ai-review-token-optional) |
+| `DEEPSEEK_API_KEY` | `deepseek-review.yml` | See [Step 6](#step-6--ai-review-token-optional) |
 
 Delete the workflow rather than inventing a value for a secret you do not need. A workflow failing
 on a missing secret every single run trains people to ignore red marks.
@@ -774,10 +777,9 @@ tags to build the changelog, and resolves its production SHA through the REST AP
 
 ### Step 6 — AI review token (optional)
 
-1. Create an API key at your provider's console (the shipped workflow uses
-   [`hustcer/deepseek-review`](https://github.com/hustcer/deepseek-review), which accepts any
-   OpenAI-compatible endpoint).
-2. Add it as `DEEPSEEK_CODE_REVIEW_TOKEN`.
+1. Create an API key in the DeepSeek platform console, and add a balance: the API is paid per
+   token, a cent or two a review.
+2. Add it as `DEEPSEEK_API_KEY`.
 3. Confirm **Settings → Actions → General → Workflow permissions** allows pull-request writes.
 
 §3 describes when it runs. Not wiring this up? Delete the workflow file.
@@ -800,7 +802,7 @@ Every workflow starts from a pull-request event:
 | :-- | :-- | :-- |
 | `quality-gate.yaml` | a pull request into `dev` or `prod` | the 22-step CI gate |
 | `react-doctor.yml` | a pull request into `dev` or `prod` | framework health report, advisory |
-| `deepseek-review.yml` | a pull request into `dev` opened or reopened; a `/ask-deepseek` comment | an AI review comment |
+| `deepseek-review.yml` | a pull request into `dev` opened or reopened; a `/ask-deepseek` comment | one AI review comment, updated on each run |
 | `dependency-review.yml` | every pull request | fails a new or bumped dependency with a known high or critical vulnerability |
 | `codeql.yml` | every pull request | code scanning, languages detected per pull request |
 | `workflows-lint.yml` | a pull request that changes `.github/` | actionlint, zizmor and pinact |
@@ -872,7 +874,7 @@ private one.
 □ Merge commits on; squash and rebase merging off
 □ Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  (or replace ci-cd.yaml)
 □ Secret:  APP_REPO_TOKEN — fine-grained, Contents: Read-only, one repo
-□ Secret:  DEEPSEEK_CODE_REVIEW_TOKEN   (or delete deepseek-review.yml)
+□ Secret:  DEEPSEEK_API_KEY             (or delete deepseek-review.yml)
 □ Variable: CI_RUNNER                   (or leave unset — defaults to ubuntu-latest)
 □ Variable: CI_RUNNER_FAST              (optional faster pool for the two long jobs)
 □ Variable: CODE_SECURITY=true          (private repo with Code Security; public needs nothing)
@@ -911,6 +913,10 @@ The idea: your production branch carries no agent configuration at all. When a p
 | `strip-ai.sh` | Removes those paths on the production branch |
 | `verify-strip.sh` | Asserts they are gone from `prod` **and still present on `dev`** |
 | `back-merge-prod.sh` | Merges `prod` back into `dev` so the branches do not diverge |
+
+In CI, `strip-ai-on-pr.yml` runs agent-config-kit's reusable strip workflow instead of these
+scripts: its default list plus `promote-deploy-logs` is exactly `STRIP_PATHS`, and its checkout
+keeps no token. `/promote-deploy` runs the scripts by hand. Change both lists together.
 
 The list removes `.claude/`, `.agent/`, `_workflow-source/`, `CLAUDE.md`, `.mcp.json`,
 `.skillspector-baseline.yaml` and the other agent files named in `strip-paths.sh`. Everything under
