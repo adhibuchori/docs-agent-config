@@ -373,7 +373,8 @@ neither alone covers the other.
 What it refuses falls into a few categories, each listed rule by rule in `.claude/hooks/README.md`:
 recursive deletes of protected paths; commands that wipe uncommitted work; skipping the pre-commit
 gate; a push to, or the deletion of, a protected branch; any shell read or write of a real `.env*`
-file; the unlock, from the agent, and changes to `scripts/env/` or the unlock script; and git
+file; the unlock, from the agent, and changes to `scripts/env/` or the unlock script; a shell
+change to the other guards (the hooks, the probes, the settings that turn them on); and git
 settings that change what git runs, which config it loads, where it connects or where it works (an
 alias, an include, a command, a credential helper, a proxy, `url.*.insteadOf`, ...), whatever their
 value and however they are set.
@@ -402,8 +403,8 @@ one can cost a secret.
 None of that is worth anything unproven. `bash scripts/check/hook-probes.sh` feeds every hook the
 JSON Claude Code sends, in throwaway fixtures, and checks both what it must refuse and what it must
 let through. It covers every row of the rule table, a linked git worktree, every cell of the
-fail-mode table, and each hook's configuration keys: 1,797 probes here, under macOS `/bin/bash` 3.2
-in about three minutes. The gate list runs it whenever a hook, `settings.json`, the probes, the
+fail-mode table, and each hook's configuration keys: 2,288 probes here, under macOS `/bin/bash` 3.2
+in about nine minutes. The gate list runs it whenever a hook, `settings.json`, the probes, the
 unlock script or `scripts/env/` change, and CI runs it on every pull request. Add a rule with one
 probe it must stop and one it must allow, then disable the rule and watch the probe fail, so the
 probe is known to be load-bearing.
@@ -414,7 +415,8 @@ judged by name only; and an application that loads `.env` itself sees the values
 `docs/unlock.md` § What the lock does not stop lists those limits. Below the hooks,
 `.claude/settings.json` turns on Claude Code's Bash sandbox by default. At the operating-system
 level it stops every sandboxed command and its children from reading `.env*` files or the `.env`
-backups and from writing under `.claude/state/unlock/`, so it holds where a text check cannot. It
+backups and from writing under `.claude/state/unlock/` or `.claude/hooks/` or to
+`scripts/ops/unlock.sh`, so it holds where a text check cannot. It
 runs on macOS, and on Linux or WSL2 with `bubblewrap` and `socat`; not on WSL1 or native Windows.
 Where it cannot start, Claude Code warns and runs commands without it (unless
 `sandbox.failIfUnavailable` is `true`), and the hooks still apply. A command that fails inside it

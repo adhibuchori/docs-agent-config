@@ -38,9 +38,9 @@ Before a non-trivial change, skim:
 Before calling a task done, run `bash scripts/check/gates.sh`. It runs `scripts/check/gates.list`,
 the list `.husky/pre-commit` runs, and prints each gate's exit code and log. In a shared checkout,
 `--paths <your files>` limits format and lint to your own files, and `--fix <your files>` formats
-them. It includes the hook probes, about three minutes, and so does a commit that stages a hook,
+them. It includes the hook probes, about nine minutes, and so does a commit that stages a hook,
 `.claude/settings.json`, the probes, `scripts/ops/unlock.sh` or `scripts/env/`: give either Bash
-call a timeout of at least 300000 ms, or the tool stops it at two minutes.
+call the full 600000 ms timeout, or the tool stops it at two minutes.
 
 `bun run build` (never `bun build`) is not a gate; run it after a structural change and before a
 PR. There is no test suite: do not invent `bun test` commands. `bun run docs:generate` and

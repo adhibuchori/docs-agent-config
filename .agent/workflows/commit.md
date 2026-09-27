@@ -12,7 +12,7 @@ This workflow ensures all quality gates pass, inspects the staged changes, and g
 1. **Quality Gate**: run the gates in CLAUDE.md § Quality Gates first.
    - **Command**: `bash scripts/check/gates.sh --fix <your files>`, then `bash scripts/check/gates.sh`.
    - **Goal**: every gate exits 0. The pre-commit hook runs the same list on the staged files.
-   - **Timeout**: the full run includes the hook probes, about three minutes. Give that Bash call a timeout of at least 300000 ms; the default stops it at two minutes.
+   - **Timeout**: the full run includes the hook probes, about nine minutes. Give that Bash call the full 600000 ms timeout; the default stops it at two minutes.
    - **Action**: if one fails, fix the cause before proceeding. Do not proceed if the state is broken.
 
 2. **Inspect Staged Changes**: `git diff --staged` and `git status`

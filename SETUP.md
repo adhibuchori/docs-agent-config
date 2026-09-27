@@ -298,7 +298,7 @@ off.
 **Test a guard by triggering it, never by reading it.** A guard whose path pattern does not match
 your layout never fires and never complains. `bash scripts/check/hook-probes.sh` feeds every hook
 the JSON Claude Code sends and checks both what it blocks and what it lets through, in temporary
-fixtures that never touch your repo. It takes about three minutes; on macOS, run it with
+fixtures that never touch your repo. It takes about nine minutes; on macOS, run it with
 `/bin/bash` to prove bash 3.2. Run it after any change to a hook, `settings.json` or
 `scripts/check/hook-probes.tsv`; the gate list does too.
 
@@ -352,6 +352,9 @@ fix:
 - any shell read or write of a real `.env*` file or of `set.sh`'s backups;
 - the unlock, from the agent, by any route it can read, and changing `scripts/env/` or the unlock
   script from the shell;
+- changing the other guards from the shell: the hooks, `scripts/check/hook-probes.*` and the
+  settings that turn the guards on (a change goes through the Edit tool, which asks you first, or
+  your own `!`);
 - git settings that change what git runs, which config it loads, where it connects or where it
   works (an alias, an include, `core.sshCommand`, `core.fsmonitor`, an editor or pager command, a
   credential helper, `protocol.*.allow`, a proxy, `url.*.insteadOf`, `safe.directory`, ...),
@@ -383,17 +386,18 @@ outside the sandbox.
 
 Without python3 the hook falls back to plain-text rules: pushes to protected branches, recursive
 deletes of protected paths, a hard reset, a forced `clean`, `--no-verify` and `HUSKY=0`, any real
-`.env*` name, the unlock, and any mention of `scripts/env/`. Everything else runs unchecked on such
-a machine, so install python3.
+`.env*` name, the unlock, and any mention of `scripts/env/`, of a file that turns the guards on or
+of a guard script. Everything else runs unchecked on such a machine, so install python3.
 
 ### The sandbox under the hooks
 
-`.claude/settings.json` also turns on
-[Claude Code's Bash sandbox](https://code.claude.com/docs/en/sandboxing), on by default
+`.claude/settings.json` also turns on [Claude Code's Bash
+sandbox](https://code.claude.com/docs/en/sandboxing), on by default
 (`"sandbox": {"enabled": true}`). The operating system then stops every sandboxed command, and
 anything it starts, from reading `.env*` files (`.envrc` included, at any depth) or the backups in
-`.claude/state/env-backups/`, and from writing under `.claude/state/unlock/`; the `*.example`
-templates stay readable. Only `scripts/env/show.sh` and `scripts/env/set.sh` are excluded from it.
+`.claude/state/env-backups/`, and from writing under `.claude/state/unlock/` or `.claude/hooks/` or
+to `scripts/ops/unlock.sh`; the `*.example` templates stay readable. Only `scripts/env/show.sh` and
+`scripts/env/set.sh` are excluded from it.
 
 - **Platforms.** macOS needs nothing; Linux and WSL2 need `bubblewrap` and `socat`. WSL1 and native
   Windows are not supported. Where the sandbox cannot start, Claude Code warns and runs commands
@@ -496,7 +500,7 @@ Keep your own scripts out of `scripts/env/`. The safety hook trusts the helpers 
 `set.sh` and `envfile.py`) with `.env*` files, so the agent's shell may read and run what is in that
 folder (`set.sh` only while `env` is open) but never change, replace, move or delete a file in it;
 and the gate counts every file there as a hook file, so a commit that touches one runs the
-three-minute probes.
+nine-minute probes.
 
 `/merge-pr` and `/promote` run `bash scripts/ops/pr-ready.sh <pr>` before a merge. On its own it
 only checks that a pull request into the default branch does not come from that branch. To hold it
@@ -532,7 +536,7 @@ above once pasted into `package.json`, and the shared agent-layer files stay as 
 
 **A commit runs only the gates its staged files need.** A content page (`content/**/*.md` or `.mdx`)
 counts as docs, so it runs only the `all` lines, format and lint and the AI config check; other code
-runs every line except the hook probes. The probes are the slow one, about three minutes with bash
+runs every line except the hook probes. The probes are the slow one, about nine minutes with bash
 3.2, and run only when a commit stages a hook, `.claude/settings.json`, the probes themselves,
 `scripts/ops/unlock.sh` or a file under `scripts/env/`. The agent's Bash tool stops a command after
 two minutes unless told otherwise, so `CLAUDE.md` § Quality Gates asks for a longer timeout on

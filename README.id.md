@@ -470,11 +470,11 @@ puluh menit.
    dibutuhkan tema.
 
 7. **Buktikan.** Commit atau stage lapisannya, lalu jalankan `bun run format` sekali agar
-   `package.json` Anda sesuai dengan formatter. Setelah itu jalankan probe (beberapa menit) dan
-   gate, yang menjalankan setiap baris daftarnya:
+   `package.json` Anda sesuai dengan formatter. Setelah itu jalankan probe (sekitar sembilan menit)
+   dan gate, yang menjalankan setiap baris daftarnya:
 
    ```bash
-   /bin/bash scripts/check/hook-probes.sh   # hook probes: 1797 passed, 0 failed
+   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2288 passed, 0 failed
    bash scripts/check/gates.sh              # 12 gate(s) ran, 0 failed
    ```
 
@@ -745,7 +745,7 @@ file yang di-stage; CI menjalankan pemeriksaan yang sama dan lebih banyak lagi d
 | [`gates.sh`](scripts/check/gates.sh) + [`gates.list`](scripts/check/gates.list) | Menjalankan setiap gate dalam daftar: satu log per gate, tabel di akhir, ekor setiap kegagalan | `bash scripts/check/gates.sh`; `--paths <files>` membatasi format dan lint ke file Anda; pre-commit menjalankan `--hook --fail-fast` | Mesin Anda dan hook commit menjalankan satu daftar yang sama, jadi tidak bisa berbeda |
 | [`ai-config.sh`](scripts/check/ai-config.sh) | Menjaga `CLAUDE.md` plus rule yang selalu dimuat di bawah 15.000 byte, menjauhkan import `@` dari `CLAUDE.md`, memastikan setiap hook yang di-wire ada dan setiap server MCP di-pin | `bash scripts/check/ai-config.sh` (sebuah gate) | Konteks yang selalu dimuat tetap kecil, dan hook yang berganti nama tidak bisa diam-diam berhenti berjalan |
 | [`ai-config-probes.sh`](scripts/check/ai-config-probes.sh) | Membuktikan rule pin MCP dua arah, di repo sementara | `bash scripts/check/ai-config-probes.sh` (sebuah gate) | Pemeriksaan pin tidak bisa diam-diam meloloskan semuanya |
-| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Memberi setiap hook JSON yang dikirim Claude Code lalu memeriksa exit code dan pesannya: 1.797 probe, termasuk mode gagal dan worktree | `/bin/bash scripts/check/hook-probes.sh` (beberapa menit; menjadi gate saat file hook di-stage) | Setiap rule terbukti memblokir yang harus diblokir dan mengizinkan yang harus diizinkan |
+| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Memberi setiap hook JSON yang dikirim Claude Code lalu memeriksa exit code dan pesannya: 2.288 probe, termasuk mode gagal dan worktree | `/bin/bash scripts/check/hook-probes.sh` (sekitar sembilan menit; menjadi gate saat file hook di-stage) | Setiap rule terbukti memblokir yang harus diblokir dan mengizinkan yang harus diizinkan |
 | [`skills.sh`](scripts/check/skills.sh) | Memindai perintah, subagen, hook, dan skill dengan SkillSpector yang di-pin ke satu commit, terhadap `.skillspector-baseline.yaml` | `bash scripts/check/skills.sh --staged` (sebuah gate) | Baris prompt-injection di sebuah perintah tertangkap seperti dependency yang rentan |
 | [`double-assertion.sh`](scripts/check/double-assertion.sh) | Menolak `as unknown as` di TypeScript | `bash scripts/check/double-assertion.sh` (sebuah gate) | Pemeriksaan tipe compiler tidak bisa dimatikan diam-diam |
 | [`folder-shape.mjs`](scripts/check/folder-shape.mjs) | Melaporkan pelanggaran bentuk folder SHAPE-1 sampai SHAPE-4 | `node scripts/check/folder-shape.mjs` (sebuah gate); `--warn` hanya melapor | Struktur folder tetap mudah dijelajahi saat tumbuh |
@@ -928,14 +928,14 @@ $ bash scripts/ops/unlock.sh status
 Hook adalah pagar pengaman; sandbox Bash milik Claude Code, yang aktif secara default di
 `.claude/settings.json`, adalah lapisan sistem operasi di bawahnya. Sandbox menghentikan perintah
 yang di-sandbox dari membaca file `.env*` atau backup `.env`, dan dari menulis di bawah
-`.claude/state/unlock/`. Hanya `show.sh` dan `set.sh` yang dikecualikan; perintah lain hanya bisa
-keluar dari sandbox lewat percobaan ulang yang harus Anda setujui di Claude Code (atur
-`sandbox.allowUnsandboxedCommands` ke `false` untuk melarang percobaan ulang itu). Sandbox berjalan
-di macOS, serta di Linux atau WSL2 dengan `bubblewrap` dan `socat`; tidak di WSL1 atau Windows
-native. Di tempat sandbox tidak bisa berjalan, Claude Code memberi peringatan dan menjalankan
-perintah tanpanya (kecuali `sandbox.failIfUnavailable` bernilai `true`), dan hook tetap berlaku.
-Matikan dengan `"sandbox": {"enabled": false}`. Batasan yang sudah diketahui, dijelaskan di
-[`docs/unlock.md`](docs/unlock.md):
+`.claude/state/unlock/`, `.claude/hooks/`, atau `scripts/ops/unlock.sh`. Hanya `show.sh` dan
+`set.sh` yang dikecualikan; perintah lain hanya bisa keluar dari sandbox lewat percobaan ulang yang
+harus Anda setujui di Claude Code (atur `sandbox.allowUnsandboxedCommands` ke `false` untuk melarang
+percobaan ulang itu). Sandbox berjalan di macOS, serta di Linux atau WSL2 dengan `bubblewrap` dan
+`socat`; tidak di WSL1 atau Windows native. Di tempat sandbox tidak bisa berjalan, Claude Code
+memberi peringatan dan menjalankan perintah tanpanya (kecuali `sandbox.failIfUnavailable` bernilai
+`true`), dan hook tetap berlaku. Matikan dengan `"sandbox": {"enabled": false}`. Batasan yang sudah
+diketahui, dijelaskan di [`docs/unlock.md`](docs/unlock.md):
 
 - Aplikasi yang memuat `.env` sendiri (dev server, generator) melihat nilainya, memang harus begitu,
   dan output-nya bisa menampilkan salah satunya; aplikasi seperti itu butuh persetujuan Anda untuk
@@ -945,7 +945,9 @@ Matikan dengan `"sandbox": {"enabled": false}`. Batasan yang sudah diketahui, di
   `parallel`) hanya dinilai dari namanya; daftarkan wrapper Anda sendiri di `commandWrappers`.
 - Tanpa python3, hook keamanan kembali ke beberapa aturan teks sederhana, dan sebagian besar
   pemeriksaan lain tidak berjalan.
-- Hook adalah file di repositori; review perubahan di bawah `.claude/` seperti kode lainnya.
+- Hook adalah file di repositori. Shell tidak bisa mengubahnya, tetapi tool Edit bisa setelah
+  `.claude/settings.json` bertanya kepada Anda; review perubahan di bawah `.claude/` seperti kode
+  lainnya.
 - Tool MCP untuk mengedit, seperti milik Serena, berada di luar aturan deny, pemeriksaan path milik
   hook, dan sandbox Bash, jadi prompt izinnyalah yang menjaga `.env*`; jangan pernah menyetujui
   prompt yang mengarah ke sana
@@ -984,9 +986,9 @@ Matikan dengan `"sandbox": {"enabled": false}`. Batasan yang sudah diketahui, di
   diperiksanya (payload rusak, penganalisis yang crash atau macet). Hook umpan balik yang tidak bisa
   bekerja memilih diam. [Tabel mode gagal](.claude/hooks/README.md#fail-modes) mencantumkan setiap
   kasus per hook.
-- **Setiap rule dibuktikan dua arah.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) memuat 598
-  baris untuk `safety-check.sh` (402 yang harus diblokir, 196 yang harus diizinkan), dan
-  [`hook-probes.sh`](scripts/check/hook-probes.sh) menjalankan total 1.797 probe untuk setiap hook,
+- **Setiap rule dibuktikan dua arah.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) memuat 808
+  baris untuk `safety-check.sh` (540 yang harus diblokir, 268 yang harus diizinkan), dan
+  [`hook-probes.sh`](scripts/check/hook-probes.sh) menjalankan total 2.288 probe untuk setiap hook,
   mode gagal, dan worktree. Jalankan di bawah bash 3.2 bawaan macOS dengan
   `/bin/bash scripts/check/hook-probes.sh`.
 - **Berlapis, bukan satu tembok.** Hook membaca teks perintah; daftar `deny` di
@@ -1016,20 +1018,24 @@ Matikan dengan `"sandbox": {"enabled": false}`. Batasan yang sudah diketahui, di
   perintah yang menghapus pekerjaan yang belum di-commit (hard reset, `clean` paksa, `checkout .`,
   `stash` tanpa pathspec); pelewatan gate pre-commit; push ke, atau penghapusan, branch yang
   dilindungi; pembacaan atau penulisan file `.env*` asli lewat shell; unlock oleh agen; perubahan
-  pada `scripts/env/` atau skrip unlock; dan pengaturan git yang mengubah apa yang dijalankan,
-  dimuat, atau dihubungi git (alias, include, command, credential helper, proxy,
-  `url.*.insteadOf`, ...), apa pun nilainya.
+  pada `scripts/env/` atau skrip unlock; perubahan pada guard lainnya (hook,
+  `scripts/check/hook-probes.*`, dan pengaturan yang menyalakan guard), yang hanya boleh lewat tool
+  Edit setelah bertanya kepada Anda, atau lewat `!` Anda sendiri; dan pengaturan git yang mengubah
+  apa yang dijalankan, dimuat, atau dihubungi git (alias, include, command, credential helper,
+  proxy, `url.*.insteadOf`, ...), apa pun nilainya.
 - **Yang tidak bisa diurai, ditolak (fail-closed).** Payload yang bukan JSON, penganalisis yang
   crash atau berjalan lebih dari 8 dtk, `eval` atau teks yang di-decode, kode yang di-pipe ke shell
   dari output yang tidak bisa dibacanya, `$( )` sebagai perintah atau nama file, path yang dibangun
   lewat `IFS` atau array, perintah package runner yang dibangun dari `$( )` atau variabel yang tidak
-  dikenal, kode inline yang membuka file: masing-masing ditolak beserta alasannya dan saran untuk
-  menjalankannya sendiri dengan `!` jika memang disengaja. `!` menjalankan perintah sebagai Anda,
-  dengan akses Anda sendiri, di luar hook dan (dalam sesi biasa) di luar sandbox. Penolakan yang
-  keliru hanya "berbiaya" satu `!`.
+  dikenal, kode inline yang membuka atau mengubah file atau menjalankan perintah, path yang
+  diserahkan ke perintah pengubah file lewat `xargs` atau `$( )`: masing-masing ditolak beserta
+  alasannya dan saran untuk menjalankannya sendiri dengan `!` jika memang disengaja. `!` menjalankan
+  perintah sebagai Anda, dengan akses Anda sendiri, di luar hook dan (dalam sesi biasa) di luar
+  sandbox. Penolakan yang keliru hanya "berbiaya" satu `!`.
 - **Sandbox Bash adalah lapisan di bawahnya, aktif secara default.** `.claude/settings.json`
   menyalakan sandbox Claude Code, sehingga sistem operasi menjauhkan perintah yang di-sandbox dari
-  file `.env*` dan file unlock, bahkan lewat jalur yang tidak pernah dilihat hook. Matikan dengan
+  file `.env*`, file unlock, hook, dan skrip unlock, bahkan lewat jalur yang tidak pernah dilihat
+  hook. Matikan dengan
   `"sandbox": {"enabled": false}` di `.claude/settings.json` atau `.claude/settings.local.json`
   Anda; hook tetap berjalan.
 - **Untuk mematikan sebuah hook**, hapus entrinya dari `.claude/settings.json`
@@ -1045,14 +1051,14 @@ sampai 39 selama gate berjalan), jadi anggap angka waktunya sebagai batas atas:
 
 | Apa | Biaya |
 | :-- | :-- |
-| Konteks yang selalu dimuat: `CLAUDE.md` (7.287 byte) + `working-agreements.md` (4.278 byte) | **11.565 byte** dari batas 15.000 byte yang ditegakkan `ai-config.sh` |
+| Konteks yang selalu dimuat: `CLAUDE.md` (7.281 byte) + `working-agreements.md` (4.278 byte) | **11.559 byte** dari batas 15.000 byte yang ditegakkan `ai-config.sh` |
 | Deskripsi perintah dan subagen yang ditampilkan Claude Code | 3.177 byte untuk keenam belasnya |
-| `safety-check.sh` untuk satu perintah | sekitar 0,2 dtk (198 sampai 202 ms) |
+| `safety-check.sh` untuk satu perintah | sekitar 0,23 dtk (198 sampai 202 ms sebelum aturan skrip guard, yang menambah sekitar 17%; versi lama dan baru dijalankan berdampingan) |
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | masing-masing 0,11 sampai 0,14 dtk |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | masing-masing 0,08 sampai 0,10 dtk |
 | Commit yang hanya men-stage halaman konten | hanya gate `all`: format, lint, dan pemeriksaan konfigurasi AI |
-| `/bin/bash scripts/check/hook-probes.sh` | 4 mnt 28 dtk untuk 1.797 probe (load average 4 sampai 5) |
-| Commit yang men-stage file hook, atau `bash scripts/check/gates.sh` | 6 mnt 4 dtk untuk ke-12 gate, 6 mnt 2 dtk di antaranya untuk probe hook |
+| `/bin/bash scripts/check/hook-probes.sh` | 8 mnt 53 dtk untuk 2.288 probe |
+| Commit yang men-stage file hook, atau `bash scripts/check/gates.sh` | probe hook di atas, ditambah sekitar 2 dtk untuk 11 gate lainnya |
 | CI | hanya di pull request: tidak ada saat push, tidak ada yang terjadwal |
 
 `post-edit.sh` menambah waktu yang dipakai formatter dan linter Anda sendiri pada file itu (timeout
@@ -1086,8 +1092,9 @@ dengan CHANGELOG dan baris **Breaking:**, jika Anda lebih suka rilis
 ([Lebih suka plugin?](#lebih-suka-plugin)).
 
 **Rollback atau mencopot.** Jalankan sendiri, di terminal Anda: hook keamanan menolak setiap
-perubahan agen pada `core.hooksPath`, `scripts/env/` atau skrip unlock, jadi agen tidak bisa
-membongkar lapisan ini. Jika Anda menambahkan lapisan ini dalam satu commit, lakukan revert:
+perubahan agen pada `core.hooksPath`, hook, `.claude/settings.json`, `scripts/env/` atau skrip
+unlock, jadi agen tidak bisa membongkar lapisan ini. Jika Anda menambahkan lapisan ini dalam satu
+commit, lakukan revert:
 
 ```bash
 git revert <the-commit-that-added-the-layer>
@@ -1318,9 +1325,9 @@ kasus.
 <summary><strong>Commit makan waktu beberapa menit, atau commit agen kena timeout.</strong></summary>
 
 Commit yang men-stage sebuah hook, `.claude/settings.json`, probe-nya, `scripts/ops/unlock.sh`, atau
-file di bawah `scripts/env/` menjalankan probe hook, yang makan waktu beberapa menit. Tool Bash
-milik Claude menghentikan perintah setelah dua menit kecuali diberi tahu lain, jadi `CLAUDE.md`
-meminta timeout minimal 300000 ms untuk commit seperti itu dan untuk `gates.sh`. Commit yang hanya
+file di bawah `scripts/env/` menjalankan probe hook, yang makan waktu sekitar sembilan menit. Tool
+Bash milik Claude menghentikan perintah setelah dua menit kecuali diberi tahu lain, jadi `CLAUDE.md`
+meminta timeout penuh 600000 ms untuk commit seperti itu dan untuk `gates.sh`. Commit yang hanya
 berisi halaman konten cukup menjalankan format, lint, dan pemeriksaan konfigurasi AI.
 
 </details>

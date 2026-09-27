@@ -453,11 +453,11 @@ Steps 1 to 7 are the minimum; [SETUP.md](SETUP.md) has the full path, about fort
    theme needs.
 
 7. **Prove it.** Commit or stage the layer, and run `bun run format` once so your own
-   `package.json` matches the formatter. Then run the probes (a few minutes) and the gate,
+   `package.json` matches the formatter. Then run the probes (about nine minutes) and the gate,
    which runs every line of the list:
 
    ```bash
-   /bin/bash scripts/check/hook-probes.sh   # hook probes: 1797 passed, 0 failed
+   /bin/bash scripts/check/hook-probes.sh   # hook probes: 2288 passed, 0 failed
    bash scripts/check/gates.sh              # 12 gate(s) ran, 0 failed
    ```
 
@@ -721,7 +721,7 @@ checks and more in 22 steps.
 | [`gates.sh`](scripts/check/gates.sh) + [`gates.list`](scripts/check/gates.list) | Runs every gate in the list: one log per gate, a table at the end, the tail of each failure | `bash scripts/check/gates.sh`; `--paths <files>` limits format and lint to your files; pre-commit runs `--hook --fail-fast` | Your machine and the commit hook run one list, so they cannot disagree |
 | [`ai-config.sh`](scripts/check/ai-config.sh) | Keeps `CLAUDE.md` plus the always-loaded rules under 15,000 bytes, keeps `@` imports out of `CLAUDE.md`, checks every wired hook exists and every MCP server is pinned | `bash scripts/check/ai-config.sh` (a gate) | The always-loaded context stays small, and a renamed hook cannot silently stop running |
 | [`ai-config-probes.sh`](scripts/check/ai-config-probes.sh) | Proves the MCP pin rule both ways, in a temp repo | `bash scripts/check/ai-config-probes.sh` (a gate) | The pin check cannot quietly pass everything |
-| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Feeds every hook the JSON Claude Code sends and checks exit code and message: 1,797 probes, fail modes and worktrees included | `/bin/bash scripts/check/hook-probes.sh` (a few minutes; a gate when a hook file is staged) | Every rule is proven to block what it must and to allow what it must |
+| [`hook-probes.sh`](scripts/check/hook-probes.sh) + [`hook-probes.tsv`](scripts/check/hook-probes.tsv) | Feeds every hook the JSON Claude Code sends and checks exit code and message: 2,288 probes, fail modes and worktrees included | `/bin/bash scripts/check/hook-probes.sh` (about nine minutes; a gate when a hook file is staged) | Every rule is proven to block what it must and to allow what it must |
 | [`skills.sh`](scripts/check/skills.sh) | Scans commands, subagents, hooks and skills with SkillSpector, pinned to one commit, against `.skillspector-baseline.yaml` | `bash scripts/check/skills.sh --staged` (a gate) | A prompt-injection line in a command is caught like a vulnerable dependency |
 | [`double-assertion.sh`](scripts/check/double-assertion.sh) | Refuses `as unknown as` in TypeScript | `bash scripts/check/double-assertion.sh` (a gate) | The compiler's type check cannot be switched off quietly |
 | [`folder-shape.mjs`](scripts/check/folder-shape.mjs) | Reports folder-shape violations SHAPE-1 to SHAPE-4 | `node scripts/check/folder-shape.mjs` (a gate); `--warn` only reports | The tree stays navigable as it grows |
@@ -900,7 +900,8 @@ $ bash scripts/ops/unlock.sh status
 
 The hooks are a guardrail; Claude Code's Bash sandbox, on by default in `.claude/settings.json`, is
 the operating-system layer under them. It stops sandboxed commands from reading `.env*` files or the
-`.env` backups and from writing under `.claude/state/unlock/`. Only `show.sh` and `set.sh` are
+`.env` backups and from writing under `.claude/state/unlock/`, `.claude/hooks/` or
+`scripts/ops/unlock.sh`. Only `show.sh` and `set.sh` are
 excluded from it; any other command leaves it only through a retry Claude Code asks you to approve
 (set `sandbox.allowUnsandboxedCommands` to `false` to forbid that retry). It runs on macOS, and on
 Linux or WSL2 with `bubblewrap` and `socat`; not on WSL1 or native Windows. Where it cannot start,
@@ -915,7 +916,8 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
   `parallel`) is judged by name only; list your own wrappers under `commandWrappers`.
 - Without python3 the safety hook falls back to a few plain-text rules, and most other checks do
   not run.
-- The hooks are repository files; review changes under `.claude/` like any other code.
+- The hooks are repository files. The shell cannot change them, but the Edit tool can once
+  `.claude/settings.json` has asked you; review changes under `.claude/` like any other code.
 - MCP editing tools such as Serena's are outside the deny rules, the hooks' path checks and the
   Bash sandbox, so their permission prompt is what guards `.env*`; never approve one aimed there
   ([RATIONALE §21](docs/RATIONALE.md#21-mcp-tools-are-allowed-in-settingsjson-and-alwaysallow-is-read-by-nothing)).
@@ -951,9 +953,9 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
 - **Guards fail closed; feedback hooks fail open.** A guard refuses what it cannot check (a bad
   payload, a crashed or hanging analyzer). A feedback hook that cannot do its job stays silent. The
   [fail-mode table](.claude/hooks/README.md#fail-modes) lists every case per hook.
-- **Every rule is proven both ways.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) holds 598
-  rows for `safety-check.sh` (402 it must block, 196 it must allow), and
-  [`hook-probes.sh`](scripts/check/hook-probes.sh) runs 1,797 probes in total across every hook,
+- **Every rule is proven both ways.** [`hook-probes.tsv`](scripts/check/hook-probes.tsv) holds 808
+  rows for `safety-check.sh` (540 it must block, 268 it must allow), and
+  [`hook-probes.sh`](scripts/check/hook-probes.sh) runs 2,288 probes in total across every hook,
   fail mode and worktree. Run them under macOS's bash 3.2 with
   `/bin/bash scripts/check/hook-probes.sh`.
 - **Layers, not one wall.** The hooks read command text; the `deny` list in `.claude/settings.json`
@@ -981,20 +983,23 @@ the hooks still apply. Turn it off with `"sandbox": {"enabled": false}`. Known l
   that wipe uncommitted work (a hard reset, a forced `clean`, `checkout .`, a bare `stash`);
   skipping the pre-commit gate; a push to, or the deletion of, a protected branch; any shell read
   or write of a real `.env*` file; the unlock, from the agent; changing `scripts/env/` or the
-  unlock script; and git settings that change what git runs, loads or connects to (an alias, an
-  include, a command, a credential helper, a proxy, `url.*.insteadOf`, ...), whatever their value.
+  unlock script; changing the other guards (the hooks, `scripts/check/hook-probes.*` and the
+  settings that turn the guards on), which only the Edit tool, after asking you, or your own `!`
+  may do; and git settings that change what git runs, loads or connects to (an alias, an include,
+  a command, a credential helper, a proxy, `url.*.insteadOf`, ...), whatever their value.
 - **What it cannot resolve, it refuses (fail-closed).** A payload that is not JSON, an analyzer
   that crashes or runs past 8 s, `eval` or decoded text, code piped into a shell from output it
   cannot read, `$( )` as a command or a file name, a path built through `IFS` or an array, a
-  package runner's command built from `$( )` or an unknown variable, inline code that opens a
-  file: each is refused with the reason and the hint to run it yourself with `!` if it is
+  package runner's command built from `$( )` or an unknown variable, inline code that opens or
+  changes a file or runs a command, paths handed to a command that changes files by `xargs` or
+  `$( )`: each is refused with the reason and the hint to run it yourself with `!` if it is
   intended. `!` runs the command as you, with your own access, outside the hooks and (in an
   ordinary session) outside the sandbox. A false refusal costs one `!`.
 - **The Bash sandbox is the layer below, on by default.** `.claude/settings.json` turns on Claude
   Code's sandbox, so the operating system keeps sandboxed commands out of `.env*` files and away
-  from the unlock files even on a route the hook never saw. Turn it off with
-  `"sandbox": {"enabled": false}` in `.claude/settings.json` or your `.claude/settings.local.json`;
-  the hooks keep running.
+  from the unlock files, the hooks and the unlock script even on a route the hook never saw. Turn it
+  off with `"sandbox": {"enabled": false}` in `.claude/settings.json` or your
+  `.claude/settings.local.json`; the hooks keep running.
 - **To turn a hook off**, remove its entry from `.claude/settings.json`
   ([recipe](#customize-recipes)). [`.claude/hooks/README.md`](.claude/hooks/README.md) lists what
   each one refuses, why, and what it does not catch.
@@ -1008,14 +1013,14 @@ times as upper bounds:
 
 | What | Cost |
 | :-- | :-- |
-| Always-loaded context: `CLAUDE.md` (7,287 bytes) + `working-agreements.md` (4,278 bytes) | **11,565 bytes** of the 15,000-byte budget `ai-config.sh` enforces |
+| Always-loaded context: `CLAUDE.md` (7,281 bytes) + `working-agreements.md` (4,278 bytes) | **11,559 bytes** of the 15,000-byte budget `ai-config.sh` enforces |
 | Command and subagent descriptions Claude Code lists | 3,177 bytes for all sixteen |
-| `safety-check.sh` on one command | about 0.2 s (198 to 202 ms) |
+| `safety-check.sh` on one command | about 0.23 s (198 to 202 ms before the guard-script rules, which add about 17%; old and new run side by side) |
 | `generated-guard.sh`, `db-guard.sh`, `mcp-guard.sh` | 0.11 to 0.14 s each |
 | `post-commit.sh`, `prompt-intent.sh`, `session-start.sh` | 0.08 to 0.10 s each |
 | A commit that stages only content pages | the `all` gates only: format, lint and the AI config check |
-| `/bin/bash scripts/check/hook-probes.sh` | 4 min 28 s for 1,797 probes (load average 4 to 5) |
-| A commit that stages a hook file, or `bash scripts/check/gates.sh` | 6 min 4 s for all 12 gates, 6 min 2 s of it the hook probes |
+| `/bin/bash scripts/check/hook-probes.sh` | 8 min 53 s for 2,288 probes |
+| A commit that stages a hook file, or `bash scripts/check/gates.sh` | the hook probes above, plus about 2 s for the other 11 gates |
 | CI | only on pull requests: nothing on a push, nothing on a schedule |
 
 `post-edit.sh` adds the time your own formatter and linter take on the file (60 s timeout).
@@ -1047,8 +1052,9 @@ in the diff of `SETUP.md` or `.gitignore`: read both. The plugin is versioned, w
 **Breaking:** lines, if you want releases instead ([Prefer plugins?](#prefer-plugins)).
 
 **Roll back or uninstall.** Run these yourself, in your own terminal: the safety hook refuses the
-agent any change to `core.hooksPath`, `scripts/env/` or the unlock script, so the agent cannot
-take the layer apart. If you added the layer in one commit, revert it:
+agent any change to `core.hooksPath`, the hooks, `.claude/settings.json`, `scripts/env/` or the
+unlock script, so the agent cannot take the layer apart. If you added the layer in one commit,
+revert it:
 
 ```bash
 git revert <the-commit-that-added-the-layer>
@@ -1266,9 +1272,9 @@ rather than pass unread. Check with `python3 --version`. The
 <summary><strong>A commit takes minutes, or the agent's commit times out.</strong></summary>
 
 A commit that stages a hook, `.claude/settings.json`, the probes, `scripts/ops/unlock.sh` or a file
-under `scripts/env/` runs the hook probes, which take a few minutes. Claude's Bash tool stops a
-command after two minutes unless told otherwise, so `CLAUDE.md` asks for a timeout of at least
-300000 ms on such a commit and on `gates.sh`. A commit of content pages only runs format, lint and
+under `scripts/env/` runs the hook probes, which take about nine minutes. Claude's Bash tool stops
+a command after two minutes unless told otherwise, so `CLAUDE.md` asks for the full 600000 ms
+timeout on such a commit and on `gates.sh`. A commit of content pages only runs format, lint and
 the AI config check.
 
 </details>

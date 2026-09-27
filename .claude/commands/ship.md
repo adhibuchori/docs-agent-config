@@ -185,10 +185,10 @@ There is no test suite: never invent a `bun test` step. A change to a generator'
 comment, the git history it reads, the generator itself) means re-running that generator and
 committing its output in the same change.
 
-The full `gates.sh` run includes the hook probes, about three minutes, and so does the pre-commit
+The full `gates.sh` run includes the hook probes, about nine minutes, and so does the pre-commit
 hook in Phase 4 when the commit stages a hook, `.claude/settings.json`, the probes,
 `scripts/ops/unlock.sh` or a file under `scripts/env/`; content pages and other code skip them. Give
-each of those Bash calls a timeout of at least 300000 ms; the default stops it at two minutes and
+each of those Bash calls the full 600000 ms timeout; the default stops it at two minutes and
 the commit never lands.
 
 </stack-block>
